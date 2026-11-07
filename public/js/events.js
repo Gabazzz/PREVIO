@@ -13,7 +13,10 @@ import { openAISheet } from './ai-entry.js';
 import { renderLaunchesList, runSimulation } from './render.js';
 import { handleApplyDateFilter } from './date-filter.js';
 import { handleHardReset, submitOnboardingData } from './data.js';
-import { openSettingsModal } from './settings.js';
+import {
+  openSettingsModal, setCategoryManagementType,
+  handleAddCategory, handleNotificationsToggle
+} from './settings.js';
 import { logout } from './auth.js';
 
 export function setupEventListeners() {
@@ -165,4 +168,15 @@ export function setupEventListeners() {
   DOM.btnSettingsLogout.addEventListener('click', () => {
     if (confirm('Deseja sair da sua conta?')) logout();
   });
+
+  // Settings — custom category management
+  DOM.settingsCatTypeSaida.addEventListener('click', () => setCategoryManagementType('saída'));
+  DOM.settingsCatTypeEntrada.addEventListener('click', () => setCategoryManagementType('entrada'));
+  DOM.btnAddCategory.addEventListener('click', handleAddCategory);
+  DOM.settingsNewCategoryInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleAddCategory();
+  });
+
+  // Settings — proactive notifications toggle
+  DOM.settingsNotificationsToggle.addEventListener('change', handleNotificationsToggle);
 }

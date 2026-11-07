@@ -3,7 +3,7 @@
    ========================================================================== */
 
 import { DOM } from './dom.js';
-import { CATEGORY_COLORS, DELTA_STORAGE_KEY } from './constants.js';
+import { DELTA_STORAGE_KEY } from './constants.js';
 import { getLocalDateStr, formatBRL, animateNumber } from './utils.js';
 import { stats, runCoreCalculations } from './calculations.js';
 import {
@@ -12,8 +12,13 @@ import {
   activeSwipedItem, setActiveSwipedItem
 } from './state.js';
 import { openModal, handleModalDelete } from './transaction-modal.js';
+import { getCategoryColor } from './categories.js';
+import { getGoal } from './goals.js';
+import { logAutonomySnapshot, getAutonomyHistory } from './autonomy-history.js';
+import { checkAndNotify } from './notifications.js';
 
 let chartInstance = null;
+let autonomyChartInstance = null;
 let touchStartX = 0;
 
 // One-time staggered entrance for a view's cards, played only the first time
@@ -24,6 +29,35 @@ export function playViewEnterOnce(viewId) {
   playedEnterViews.add(viewId);
   const view = document.getElementById(viewId);
   if (view) view.classList.add('view-enter');
+}
+
+// Builds one category row for the Análise bars, with an optional goal badge
+// when the user has set a monthly cap for that category (see goals.js). The
+// badge's color tracks how close/over the spending is, so it reads as a
+// warning before the month's bill does.
+function buildCategoryBarItem(cat, val, pctOfTotal, defaultColor) {
+  const barItem = document.createElement('div');
+  barItem.className = 'insight-bar-item';
+
+  const goal = getGoal(cat);
+  let goalBadge = '';
+  if (goal) {
+    const goalPct = Math.round((val / goal) * 100);
+    const status = goalPct >= 100 ? 'critical' : goalPct >= 80 ? 'warning' : 'safe';
+    goalBadge = `<span class="insight-bar-goal-badge ${status}">${goalPct}% da meta de ${formatBRL(goal)}</span>`;
+  }
+
+  barItem.innerHTML = `
+    <div class="insight-bar-info">
+      <span class="insight-bar-label">${cat}</span>
+      <span class="insight-bar-value">${formatBRL(val)} (${pctOfTotal}%)</span>
+    </div>
+    <div class="insight-bar-track">
+      <div class="insight-bar-fill" data-target-width="${pctOfTotal}" style="background-color: ${getCategoryColor(cat) || defaultColor};"></div>
+    </div>
+    ${goalBadge}
+  `;
+  return barItem;
 }
 
 // Category bars are built with width:0 (see .insight-bar-fill in app.css) so
@@ -58,6 +92,9 @@ export function processAndRenderAll() {
   runCoreCalculations();
   renderDashboardData();
   renderDashboardChart();
+
+  logAutonomySnapshot(stats.daysRemaining);
+  checkAndNotify(stats);
 
   playViewEnterOnce('view-dashboard');
 
@@ -612,7 +649,7 @@ export function renderLaunchesList() {
 
       const dot = document.createElement('div');
       dot.className = 't-dot';
-      dot.style.backgroundColor = CATEGORY_COLORS[t.category] || '#64748b';
+      dot.style.backgroundColor = getCategoryColor(t.category);
 
       const details = document.createElement('div');
       details.className = 't-details';
@@ -762,9 +799,86 @@ export function runSimulation() {
   DOM.simFeedbackBox.innerHTML = `Sua autonomia passaria de <strong>${displayCurrent}</strong> para <strong>${displaySim}</strong>.`;
 }
 
+// Mini line chart of stats.daysRemaining logged once per day (see
+// autonomy-history.js) — lets the user see whether their autonomy is
+// actually trending up or down instead of just its instantaneous value.
+function renderAutonomyHistoryChart() {
+  const history = getAutonomyHistory();
+
+  if (history.length < 2) {
+    if (DOM.analysisAutonomyChart) DOM.analysisAutonomyChart.style.display = 'none';
+    if (DOM.analysisAutonomyHistoryEmpty) DOM.analysisAutonomyHistoryEmpty.style.display = 'block';
+    return;
+  }
+
+  if (DOM.analysisAutonomyChart) DOM.analysisAutonomyChart.style.display = 'block';
+  if (DOM.analysisAutonomyHistoryEmpty) DOM.analysisAutonomyHistoryEmpty.style.display = 'none';
+
+  const labels = history.map(h => {
+    const d = new Date(h.date + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '');
+  });
+  const data = history.map(h => h.days);
+
+  if (autonomyChartInstance) autonomyChartInstance.destroy();
+
+  const ctx = DOM.analysisAutonomyChart.getContext('2d');
+  autonomyChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Dias de autonomia',
+        data,
+        borderColor: '#00ffa8',
+        backgroundColor: 'rgba(0, 255, 168, 0.08)',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+        tension: 0.25
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          titleFont: { family: 'Space Grotesk', size: 10 },
+          bodyFont: { family: 'Inter', size: 12 },
+          backgroundColor: '#080c16',
+          titleColor: '#64748b',
+          bodyColor: '#f1f5f9',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          callbacks: {
+            label: (context) => `${Math.round(context.parsed.y)} dias`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748b', font: { family: 'Space Grotesk', size: 8 }, maxTicksLimit: 6 }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255, 255, 255, 0.04)', drawBorder: false },
+          ticks: { color: '#64748b', font: { family: 'Space Grotesk', size: 8 }, maxTicksLimit: 4 }
+        }
+      }
+    }
+  });
+}
+
 // 12. Analysis & Insights view renderer (Fixed vs Variable Category Separations)
 export function renderAnalysisData() {
   if (currentView !== 'analysis') return;
+
+  renderAutonomyHistoryChart();
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -856,19 +970,7 @@ export function renderAnalysisData() {
     sortedVarCats.forEach(cat => {
       const val = catTotalsVariable[cat];
       const pct = ((val / variableExpenses) * 100).toFixed(0);
-
-      const barItem = document.createElement('div');
-      barItem.className = 'insight-bar-item';
-      barItem.innerHTML = `
-        <div class="insight-bar-info">
-          <span class="insight-bar-label">${cat}</span>
-          <span class="insight-bar-value">${formatBRL(val)} (${pct}%)</span>
-        </div>
-        <div class="insight-bar-track">
-          <div class="insight-bar-fill" data-target-width="${pct}" style="background-color: ${CATEGORY_COLORS[cat] || '#3b82f6'};"></div>
-        </div>
-      `;
-      DOM.analysisCategoryBarsVariable.appendChild(barItem);
+      DOM.analysisCategoryBarsVariable.appendChild(buildCategoryBarItem(cat, val, pct, '#3b82f6'));
     });
     growInsightBars(DOM.analysisCategoryBarsVariable);
   }
@@ -882,19 +984,7 @@ export function renderAnalysisData() {
     sortedFixedCats.forEach(cat => {
       const val = catTotalsFixed[cat];
       const pct = ((val / fixedExpenses) * 100).toFixed(0);
-
-      const barItem = document.createElement('div');
-      barItem.className = 'insight-bar-item';
-      barItem.innerHTML = `
-        <div class="insight-bar-info">
-          <span class="insight-bar-label">${cat}</span>
-          <span class="insight-bar-value">${formatBRL(val)} (${pct}%)</span>
-        </div>
-        <div class="insight-bar-track">
-          <div class="insight-bar-fill" data-target-width="${pct}" style="background-color: ${CATEGORY_COLORS[cat] || '#8b5cf6'};"></div>
-        </div>
-      `;
-      DOM.analysisCategoryBarsFixed.appendChild(barItem);
+      DOM.analysisCategoryBarsFixed.appendChild(buildCategoryBarItem(cat, val, pct, '#8b5cf6'));
     });
     growInsightBars(DOM.analysisCategoryBarsFixed);
   }

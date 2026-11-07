@@ -3,7 +3,7 @@
    ========================================================================== */
 
 import { DOM } from './dom.js';
-import { CATEGORIES } from './constants.js';
+import { getCategories } from './categories.js';
 import { getLocalDateStr } from './utils.js';
 import { supabase, getCurrentUser } from './supabase-client.js';
 import {
@@ -70,7 +70,7 @@ export function setModalType(type) {
   }
 
   DOM.categoryChipsList.innerHTML = '';
-  const list = CATEGORIES[type];
+  const list = getCategories(type);
   list.forEach((cat, index) => {
     const chip = document.createElement('div');
     chip.className = `chip ${index === 0 && !activeEditId ? 'active' : ''}`;

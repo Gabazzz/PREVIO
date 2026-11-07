@@ -395,6 +395,15 @@
           </div>
         </div>
 
+        <!-- Autonomy Days History -->
+        <div class="hud-card" id="analysis-autonomy-history-card">
+          <div class="section-title" style="margin-bottom: 12px; font-size: 0.7rem;">Evolução da Autonomia</div>
+          <div class="chart-container" style="height: 140px;">
+            <canvas id="analysis-autonomy-chart"></canvas>
+          </div>
+          <p id="analysis-autonomy-history-empty" class="trend-indicator" style="display:none; margin-top: 8px;">Continue registrando por alguns dias para começar a ver sua evolução aqui.</p>
+        </div>
+
         <!-- Spending Category Chart (Tabs for Fixed vs Variable categories) -->
         <div class="hud-card">
           <div class="analysis-section-toggle">
@@ -626,6 +635,45 @@
           <p class="settings-section-hint">Renda mensal, aluguel e outras contas fixas que o radar lança sozinho todo mês. Edite o valor ou pare a recorrência aqui.</p>
           <div id="settings-recurring-list">
             <!-- Populado dinamicamente -->
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Categorias Personalizadas</div>
+          <p class="settings-section-hint">Crie categorias extras para saídas ou entradas, além das que já existem.</p>
+          <div class="pill-toggle settings-category-type-toggle">
+            <div id="settings-cat-type-saida" class="pill-option active saida" data-cat-type="saída">SAÍDA</div>
+            <div id="settings-cat-type-entrada" class="pill-option entrada" data-cat-type="entrada">ENTRADA</div>
+          </div>
+          <div class="settings-add-category-row">
+            <input type="text" id="settings-new-category-input" class="hud-input" placeholder="Nome da nova categoria" maxlength="24">
+            <button id="btn-add-category" class="hud-btn primary settings-add-category-btn">+</button>
+          </div>
+          <div id="settings-custom-categories-list" class="settings-custom-categories-list">
+            <!-- Populado dinamicamente -->
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Metas por Categoria</div>
+          <p class="settings-section-hint">Defina um teto mensal de gastos por categoria. O radar avisa quando você estiver perto ou acima do limite.</p>
+          <div id="settings-goals-list" class="settings-goals-list">
+            <!-- Populado dinamicamente -->
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Alertas do Radar</div>
+          <p class="settings-section-hint">Receba um aviso quando sua autonomia cair bruscamente ou seu ritmo de gasto acelerar — funciona com o app aberto ou em segundo plano (não substitui notificações push em background).</p>
+          <div class="toggle-switch-wrapper">
+            <div class="toggle-switch-label">
+              <span class="toggle-switch-title">Ativar alertas</span>
+              <span class="toggle-switch-desc" id="settings-notifications-status">Desativado</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settings-notifications-toggle">
+              <span class="slider"></span>
+            </label>
           </div>
         </div>
 

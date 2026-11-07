@@ -112,5 +112,23 @@ export const DOM = {
   btnSettingsClose: document.getElementById('btn-settings-close'),
   btnSettingsLogout: document.getElementById('btn-settings-logout'),
   settingsAccountEmail: document.getElementById('settings-account-email'),
-  settingsRecurringList: document.getElementById('settings-recurring-list')
+  settingsRecurringList: document.getElementById('settings-recurring-list'),
+
+  // Settings — custom categories
+  settingsCatTypeSaida: document.getElementById('settings-cat-type-saida'),
+  settingsCatTypeEntrada: document.getElementById('settings-cat-type-entrada'),
+  settingsNewCategoryInput: document.getElementById('settings-new-category-input'),
+  btnAddCategory: document.getElementById('btn-add-category'),
+  settingsCustomCategoriesList: document.getElementById('settings-custom-categories-list'),
+
+  // Settings — category goals
+  settingsGoalsList: document.getElementById('settings-goals-list'),
+
+  // Settings — notifications
+  settingsNotificationsToggle: document.getElementById('settings-notifications-toggle'),
+  settingsNotificationsStatus: document.getElementById('settings-notifications-status'),
+
+  // Analysis — autonomy history chart
+  analysisAutonomyChart: document.getElementById('analysis-autonomy-chart'),
+  analysisAutonomyHistoryEmpty: document.getElementById('analysis-autonomy-history-empty')
 };
