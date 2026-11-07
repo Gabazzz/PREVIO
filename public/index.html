@@ -195,7 +195,9 @@
           <span id="system-status-text">Radar Ativo</span>
         </div>
 
-        <button onclick="logout()" style="background:transparent; border:1px solid rgba(255,255,255,0.1); color:#64748b; padding:0.25rem 0.75rem; border-radius:6px; font-family:'Space Grotesk',sans-serif; font-size:0.7rem; cursor:pointer;">SAIR</button>
+        <button id="btn-open-settings" class="icon-btn" aria-label="Configurações">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
       </div>
     </header>
 
@@ -566,9 +568,35 @@
           </div>
         </div>
         <button id="btn-apply-date-filter" class="hud-btn primary" style="width:100%;">Aplicar Filtro</button>
-        <!-- Reset destrutivo — posição segura, longe do fluxo principal -->
-        <button id="btn-reset-data" class="hud-btn" style="width:100%; border-color: rgba(239,68,68,0.2); color: var(--text-muted); font-size: 0.75rem; margin-top: -8px;">
+      </div>
+    </div>
+
+    <!-- Modal Settings Bottom Sheet -->
+    <div id="modal-settings" class="modal-overlay">
+      <div class="bottom-sheet">
+        <div class="sheet-header">
+          <span class="sheet-title">Configurações</span>
+          <button id="btn-settings-close" class="close-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div id="settings-account-email" class="settings-account-email"></div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Lançamentos Recorrentes</div>
+          <p class="settings-section-hint">Renda mensal, aluguel e outras contas fixas que o radar lança sozinho todo mês. Edite o valor ou pare a recorrência aqui.</p>
+          <div id="settings-recurring-list">
+            <!-- Populado dinamicamente -->
+          </div>
+        </div>
+
+        <button id="btn-reset-data" class="hud-btn" style="width:100%; border-color: rgba(239,68,68,0.2); color: var(--accent-critical); font-size: 0.75rem;">
           Apagar todos os dados e reiniciar
+        </button>
+
+        <button id="btn-settings-logout" class="hud-btn" style="width:100%;">
+          Sair da conta
         </button>
       </div>
     </div>
