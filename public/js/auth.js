@@ -9,9 +9,9 @@ let currentAuthMode = 'login';
 
 function showTab(tab) {
   currentAuthMode = tab;
-  document.getElementById('tab-login').style.background = tab === 'login' ? '#10d98c' : 'transparent';
+  document.getElementById('tab-login').style.background = tab === 'login' ? '#00ffa8' : 'transparent';
   document.getElementById('tab-login').style.color = tab === 'login' ? '#020617' : '#64748b';
-  document.getElementById('tab-signup').style.background = tab === 'signup' ? '#10d98c' : 'transparent';
+  document.getElementById('tab-signup').style.background = tab === 'signup' ? '#00ffa8' : 'transparent';
   document.getElementById('tab-signup').style.color = tab === 'signup' ? '#020617' : '#64748b';
   document.getElementById('btn-auth-submit').innerText = tab === 'login' ? 'ENTRAR' : 'CRIAR CONTA';
   document.getElementById('link-forgot-password').style.display = tab === 'login' ? 'block' : 'none';

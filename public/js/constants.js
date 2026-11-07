@@ -18,9 +18,9 @@ export const CATEGORY_COLORS = {
   'Moradia': '#8b5cf6',
   'Saúde': '#ef4444',
   'Lazer': '#ec4899',
-  'Saldo Inicial': '#10d98c',
-  'Salário': '#10d98c',
+  'Saldo Inicial': '#00ffa8',
+  'Salário': '#00ffa8',
   'Freela': '#3b82f6',
-  'Rendimentos': '#10d98c',
+  'Rendimentos': '#00ffa8',
   'Outros': '#64748b'
 };

@@ -4,7 +4,7 @@
 
 import { DOM } from './dom.js';
 import { setCurrentView } from './state.js';
-import { renderDashboardChart, renderLaunchesList, renderAnalysisData, initSimulatorDefaults } from './render.js';
+import { renderDashboardChart, renderLaunchesList, renderAnalysisData, initSimulatorDefaults, playViewEnterOnce } from './render.js';
 
 export function switchView(viewName) {
   DOM.navItems.forEach(item => {
@@ -29,9 +29,12 @@ export function switchView(viewName) {
     setTimeout(renderDashboardChart, 100);
   } else if (viewName === 'launches') {
     renderLaunchesList();
+    playViewEnterOnce('view-launches');
   } else if (viewName === 'analysis') {
     renderAnalysisData();
+    playViewEnterOnce('view-analysis');
   } else if (viewName === 'simulator') {
     initSimulatorDefaults();
+    playViewEnterOnce('view-simulator');
   }
 }

@@ -15,7 +15,28 @@ import { openModal, handleModalDelete } from './transaction-modal.js';
 
 let chartInstance = null;
 let touchStartX = 0;
-let dashboardEnterPlayed = false;
+
+// One-time staggered entrance for a view's cards, played only the first time
+// that view is shown in this session (not on every data refresh/switch-back).
+const playedEnterViews = new Set();
+export function playViewEnterOnce(viewId) {
+  if (playedEnterViews.has(viewId)) return;
+  playedEnterViews.add(viewId);
+  const view = document.getElementById(viewId);
+  if (view) view.classList.add('view-enter');
+}
+
+// Category bars are built with width:0 (see .insight-bar-fill in app.css) so
+// this can set the real width a frame later, letting the CSS transition
+// animate the bar growing in instead of just appearing pre-filled.
+function growInsightBars(container) {
+  const bars = container.querySelectorAll('.insight-bar-fill[data-target-width]');
+  requestAnimationFrame(() => {
+    bars.forEach(bar => {
+      bar.style.width = `${bar.dataset.targetWidth}%`;
+    });
+  });
+}
 
 // 8. View Renderers
 export function processAndRenderAll() {
@@ -38,13 +59,7 @@ export function processAndRenderAll() {
   renderDashboardData();
   renderDashboardChart();
 
-  // One-time staggered entrance for the dashboard's cards, played only on
-  // the very first paint (not on every data refresh/re-render).
-  if (!dashboardEnterPlayed) {
-    dashboardEnterPlayed = true;
-    const dashboardView = document.getElementById('view-dashboard');
-    if (dashboardView) dashboardView.classList.add('view-dashboard-enter');
-  }
+  playViewEnterOnce('view-dashboard');
 
   // Update header indicators
   DOM.systemStatusDot.className = `pulse-dot ${stats.zone === 'safe' ? '' : stats.zone === 'attention' ? 'warning' : 'critical'}`;
@@ -119,7 +134,7 @@ export function renderDashboardData() {
   DOM.hudZoneText.innerText = zoneText;
   DOM.hudSurvivalDesc.innerText = zoneDesc;
   DOM.hudAutonomyBarFill.style.width = `${barWidth}%`;
-  DOM.survivalStatusCard.style.setProperty('--shadow-color', stats.zone === 'safe' ? 'rgba(16, 217, 140, 0.25)' : stats.zone === 'attention' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)');
+  DOM.survivalStatusCard.style.setProperty('--shadow-color', stats.zone === 'safe' ? 'rgba(0, 255, 168, 0.25)' : stats.zone === 'attention' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)');
 
   // Acceleration alert banner
   if (stats.burnAccelerating) {
@@ -396,7 +411,7 @@ export function renderDashboardChart() {
         {
           label: 'Projeção de Sobrevivência',
           data: projectionData,
-          borderColor: stats.zone === 'safe' ? '#10d98c' : stats.zone === 'attention' ? '#f59e0b' : '#ef4444',
+          borderColor: stats.zone === 'safe' ? '#00ffa8' : stats.zone === 'attention' ? '#f59e0b' : '#ef4444',
           borderDash: [6, 4],
           borderWidth: 2.5,
           pointRadius: 0,
@@ -405,7 +420,7 @@ export function renderDashboardChart() {
           backgroundColor: (context) => {
             const value = context.raw;
             if (value !== null && value <= 0) return 'rgba(239, 68, 68, 0.15)';
-            return 'rgba(16, 217, 140, 0.05)';
+            return 'rgba(0, 255, 168, 0.05)';
           },
           fill: true,
           tension: 0
@@ -704,7 +719,14 @@ export function runSimulation() {
   }
 
   const daysNum = isFinite(simDays) ? Math.floor(simDays) : '∞';
-  DOM.simDaysNumber.innerText = daysNum;
+  if (daysNum === '∞') {
+    delete DOM.simDaysNumber.dataset.animValue;
+    DOM.simDaysNumber.innerText = '∞';
+  } else {
+    // Short duration here — this number updates live while the person drags a
+    // slider, so it should track their finger closely rather than lag behind.
+    animateNumber(DOM.simDaysNumber, daysNum, (v) => Math.round(v).toString(), 180);
+  }
 
   let simZone = 'safe';
   if (simDays > 15) {
@@ -759,7 +781,7 @@ export function renderAnalysisData() {
       }
     }
   });
-  DOM.analysisTotalSpent.innerText = formatBRL(totalSpent7Days);
+  animateNumber(DOM.analysisTotalSpent, totalSpent7Days, formatBRL);
 
   // Monthly Comparison (all expenses)
   const currentMonth = today.getMonth();
@@ -843,11 +865,12 @@ export function renderAnalysisData() {
           <span class="insight-bar-value">${formatBRL(val)} (${pct}%)</span>
         </div>
         <div class="insight-bar-track">
-          <div class="insight-bar-fill" style="width: ${pct}%; background-color: ${CATEGORY_COLORS[cat] || '#3b82f6'};"></div>
+          <div class="insight-bar-fill" data-target-width="${pct}" style="background-color: ${CATEGORY_COLORS[cat] || '#3b82f6'};"></div>
         </div>
       `;
       DOM.analysisCategoryBarsVariable.appendChild(barItem);
     });
+    growInsightBars(DOM.analysisCategoryBarsVariable);
   }
 
   // Draw Fixed category bars
@@ -868,11 +891,12 @@ export function renderAnalysisData() {
           <span class="insight-bar-value">${formatBRL(val)} (${pct}%)</span>
         </div>
         <div class="insight-bar-track">
-          <div class="insight-bar-fill" style="width: ${pct}%; background-color: ${CATEGORY_COLORS[cat] || '#8b5cf6'};"></div>
+          <div class="insight-bar-fill" data-target-width="${pct}" style="background-color: ${CATEGORY_COLORS[cat] || '#8b5cf6'};"></div>
         </div>
       `;
       DOM.analysisCategoryBarsFixed.appendChild(barItem);
     });
+    growInsightBars(DOM.analysisCategoryBarsFixed);
   }
 
   // Calculate top spent category (for habit card) from all expenses in 30 days

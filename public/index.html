@@ -58,7 +58,7 @@
 
     <!-- Tabs Login/Cadastro -->
     <div id="auth-tabs" style="display:flex; gap:0; margin-bottom:1.5rem; background:#0f1729; border-radius:10px; padding:4px;">
-      <button id="tab-login" onclick="showTab('login')" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:#10d98c; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; cursor:pointer; font-size:0.8rem;">Login</button>
+      <button id="tab-login" onclick="showTab('login')" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:#00ffa8; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; cursor:pointer; font-size:0.8rem;">Login</button>
       <button id="tab-signup" onclick="showTab('signup')" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:transparent; color:#64748b; font-weight:700; font-family:'Space Grotesk',sans-serif; cursor:pointer; font-size:0.8rem;">Cadastro</button>
     </div>
 
@@ -66,11 +66,11 @@
     <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:0.75rem;">
       <input id="auth-email" type="email" placeholder="seu@email.com" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
       <input id="auth-password" type="password" placeholder="Senha" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
-      <button id="btn-auth-submit" onclick="handleAuth()" style="padding:0.875rem; background:#10d98c; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.9rem; cursor:pointer; margin-top:0.25rem;">ENTRAR</button>
+      <button id="btn-auth-submit" onclick="handleAuth()" style="padding:0.875rem; background:#00ffa8; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.9rem; cursor:pointer; margin-top:0.25rem;">ENTRAR</button>
       <button id="link-forgot-password" type="button" onclick="showForgotPasswordMode()" style="background:none; border:none; color:#64748b; font-size:0.78rem; font-family:'Inter',sans-serif; cursor:pointer; text-decoration:underline; align-self:center; margin-top:-0.25rem; padding:4px;">Esqueci minha senha</button>
       <button id="link-back-to-login" type="button" onclick="backToLogin()" style="display:none; background:none; border:none; color:#64748b; font-size:0.78rem; font-family:'Inter',sans-serif; cursor:pointer; text-decoration:underline; align-self:center; padding:4px;">← Voltar para o login</button>
       <p id="auth-error" style="color:#ef4444; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif;"></p>
-      <p id="auth-success" style="color:#10d98c; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif; line-height:1.4;"></p>
+      <p id="auth-success" style="color:#00ffa8; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif; line-height:1.4;"></p>
     </div>
   </div>
 
@@ -83,7 +83,7 @@
     <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:0.75rem;">
       <input id="reset-password-new" type="password" placeholder="Nova senha" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
       <input id="reset-password-confirm" type="password" placeholder="Confirme a nova senha" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
-      <button id="btn-reset-password-submit" onclick="handleSetNewPassword()" style="padding:0.875rem; background:#10d98c; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.9rem; cursor:pointer; margin-top:0.25rem;">SALVAR NOVA SENHA</button>
+      <button id="btn-reset-password-submit" onclick="handleSetNewPassword()" style="padding:0.875rem; background:#00ffa8; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.9rem; cursor:pointer; margin-top:0.25rem;">SALVAR NOVA SENHA</button>
       <p id="reset-password-error" style="color:#ef4444; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif;"></p>
     </div>
   </div>
@@ -93,7 +93,7 @@
     <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#f59e0b" stroke-width="2" style="margin-bottom:16px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <p style="color:#f1f5f9; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem; margin-bottom:8px;">Não foi possível carregar seus dados</p>
     <p style="color:#64748b; font-size:0.85rem; max-width:300px; margin-bottom:24px; line-height:1.5;">Verifique sua conexão com a internet e tente novamente. Seus dados estão seguros — nada foi apagado.</p>
-    <button id="btn-retry-load" style="padding:0.75rem 1.5rem; background:#10d98c; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.85rem; cursor:pointer;">TENTAR NOVAMENTE</button>
+    <button id="btn-retry-load" style="padding:0.75rem 1.5rem; background:#00ffa8; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.85rem; cursor:pointer;">TENTAR NOVAMENTE</button>
   </div>
 
   <!-- Main Viewport Container -->
@@ -103,13 +103,13 @@
     <div id="screen-onboarding" class="view-onboarding">
       <!-- SVG Radar Icon -->
       <svg class="onboarding-logo" viewBox="0 0 512 512">
-        <circle cx="256" cy="256" r="190" fill="none" stroke="#10d98c" stroke-width="3" stroke-dasharray="10 8" opacity="0.3"/>
-        <circle cx="256" cy="256" r="130" fill="none" stroke="#10d98c" stroke-width="2" stroke-dasharray="5 5" opacity="0.4"/>
-        <circle cx="256" cy="256" r="70" fill="none" stroke="#10d98c" stroke-width="1.5" opacity="0.6"/>
-        <line x1="256" y1="40" x2="256" y2="472" stroke="#10d98c" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.3"/>
-        <line x1="40" y1="256" x2="472" y2="256" stroke="#10d98c" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.3"/>
-        <path d="M 256 256 L 390 122 A 190 190 0 0 0 256 66 Z" fill="#10d98c" fill-opacity="0.15"/>
-        <line x1="256" y1="256" x2="390" y2="122" stroke="#10d98c" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="#00ffa8" stroke-width="3" stroke-dasharray="10 8" opacity="0.3"/>
+        <circle cx="256" cy="256" r="130" fill="none" stroke="#00ffa8" stroke-width="2" stroke-dasharray="5 5" opacity="0.4"/>
+        <circle cx="256" cy="256" r="70" fill="none" stroke="#00ffa8" stroke-width="1.5" opacity="0.6"/>
+        <line x1="256" y1="40" x2="256" y2="472" stroke="#00ffa8" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.3"/>
+        <line x1="40" y1="256" x2="472" y2="256" stroke="#00ffa8" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.3"/>
+        <path d="M 256 256 L 390 122 A 190 190 0 0 0 256 66 Z" fill="#00ffa8" fill-opacity="0.15"/>
+        <line x1="256" y1="256" x2="390" y2="122" stroke="#00ffa8" stroke-width="4" stroke-linecap="round"/>
       </svg>
       
       <div style="margin-bottom: 12px; display: flex; justify-content: center; align-items: center; width: 100%;">
@@ -464,7 +464,7 @@
           <!-- Slider 1: Daily Burn Rate -->
           <div class="slider-container">
             <div class="slider-header">
-              <span class="slider-label">💰 E se o gasto diário for:</span>
+              <span class="slider-label"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> E se o gasto diário for:</span>
               <span id="sim-val-burnrate" class="slider-val">R$ 0/dia</span>
             </div>
             <input type="range" id="sim-slider-burnrate" class="hud-slider" min="0" max="500" value="0">
@@ -473,7 +473,7 @@
           <!-- Slider 2: Add Income -->
           <div class="slider-container">
             <div class="slider-header">
-              <span class="slider-label">⚡ E se eu adicionar renda:</span>
+              <span class="slider-label"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg> E se eu adicionar renda:</span>
               <span id="sim-val-income" class="slider-val">R$ 0</span>
             </div>
             <input type="range" id="sim-slider-income" class="hud-slider income" min="0" max="10000" step="100" value="0">
@@ -560,7 +560,8 @@
         </div>
 
         <div id="ai-error-state" class="ai-error-msg" style="display: none;">
-          ⚠️ Não consegui interpretar. Tente ser mais específico ou use o formulário manual.
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Não consegui interpretar. Tente ser mais específico ou use o formulário manual.
         </div>
 
         <div class="ai-sheet-divider">
@@ -571,7 +572,7 @@
           <button id="btn-ai-manual-expense" class="hud-btn" style="flex: 1; border-color: rgba(239, 68, 68, 0.3); color: var(--accent-critical);">
             − Gasto
           </button>
-          <button id="btn-ai-manual-income" class="hud-btn" style="flex: 1; border-color: rgba(16, 217, 140, 0.3); color: var(--accent-safe);">
+          <button id="btn-ai-manual-income" class="hud-btn" style="flex: 1; border-color: rgba(0, 255, 168, 0.3); color: var(--accent-safe);">
             + Receita
           </button>
         </div>
