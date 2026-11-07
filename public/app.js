@@ -8,6 +8,17 @@ const supabase = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyam92Z2pobm1nbHZ0Y2xwd3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTgzMTIsImV4cCI6MjA5NTMzNDMxMn0.ngTL5_rJ0NnCyRBuwKcSylnQBp6kNDFo5-73o5dPat4'
 );
 
+// Date helper — returns YYYY-MM-DD for a LOCAL calendar date.
+// Using Date#toISOString() for "today"/"ontem" is a bug for any timezone behind UTC
+// (like Brazil): toISOString() converts to UTC first, so in the evening the UTC
+// date can already be tomorrow even though it's still "today" locally.
+function getLocalDateStr(date = new Date()) {
+  const d = new Date(date);
+  const offsetMs = d.getTimezoneOffset() * 60 * 1000;
+  const localMidnight = new Date(d.getTime() - offsetMs);
+  return localMidnight.toISOString().split('T')[0];
+}
+
 // 1. PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -164,13 +175,29 @@ async function initApp() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     document.getElementById('screen-auth').style.display = 'flex';
+    document.getElementById('screen-load-error').style.display = 'none';
     document.querySelector('.phone-viewport').style.display = 'none';
     return;
   }
   document.getElementById('screen-auth').style.display = 'none';
+
+  const loaded = await loadData();
+  if (!loaded) {
+    // Falha de rede/Supabase: NUNCA tratar como "usuário novo" (mostraria onboarding
+    // e arriscaria duplicar o saldo inicial). Mostra tela de erro com retry.
+    document.querySelector('.phone-viewport').style.display = 'none';
+    document.getElementById('screen-load-error').style.display = 'flex';
+    const btnRetry = document.getElementById('btn-retry-load');
+    if (btnRetry) btnRetry.onclick = () => {
+      document.getElementById('screen-load-error').style.display = 'none';
+      initApp();
+    };
+    return;
+  }
+
+  document.getElementById('screen-load-error').style.display = 'none';
   document.querySelector('.phone-viewport').style.display = 'flex';
 
-  await loadData();
   setupEventListeners();
   populateMonthSelector();
   initDateFilterState();
@@ -187,13 +214,17 @@ async function initApp() {
   }
 }
 
-// Load from Supabase
+// Load from Supabase. Returns true on success, false on failure — callers must
+// NEVER treat "false" the same as "zero transactions" (that would misfire onboarding
+// and risk duplicating the user's initial balance on a flaky connection).
 async function loadData() {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return false;
 
   const savedFilter = localStorage.getItem(FILTER_STORAGE_KEY);
-  if (savedFilter) activePeriodFilter = JSON.parse(savedFilter);
+  if (savedFilter) {
+    try { activePeriodFilter = JSON.parse(savedFilter); } catch (e) { /* ignore corrupt value */ }
+  }
 
   const { data, error } = await supabase
     .from('transactions')
@@ -201,22 +232,114 @@ async function loadData() {
     .eq('user_id', user.id)
     .order('date', { ascending: false });
 
-  if (!error && data) {
-    transactions = data.map(t => ({
-      id: t.id,
-      date: t.date,
-      type: t.type,
-      category: t.category,
-      description: t.description,
-      value: t.value,
-      recurring: t.recurring
-    }));
+  if (error || !data) {
+    console.error('[loadData] Falha ao carregar transações:', error);
+    return false;
   }
+
+  transactions = data.map(t => ({
+    id: t.id,
+    date: t.date,
+    type: t.type,
+    category: t.category,
+    description: t.description,
+    value: t.value,
+    recurring: t.recurring
+  }));
+
+  await generateDueRecurringOccurrences();
+
+  return true;
 }
 
 // Save to Supabase (no-op — saves done per operation)
 async function saveData() {
   // Não faz nada — salvar é feito individualmente por operação
+}
+
+// Recurring Transactions Engine
+// -----------------------------------------------------------------------------
+// A "recorrente" transaction was previously just a boolean flag on a single row —
+// nothing ever created next month's occurrence automatically, so the balance and
+// the 30-day projection silently stopped accounting for rent/subscriptions the
+// moment the user didn't manually re-enter them. This generates the missing
+// occurrences (catching up on any skipped months) whenever data is loaded, so the
+// dashboard numbers stay trustworthy without the user having to think about it.
+async function generateDueRecurringOccurrences() {
+  const recurringTxs = transactions.filter(t => t.recurring);
+  if (recurringTxs.length === 0) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // Group into series by identity (same type + category + description = same bill)
+  const seriesMap = {};
+  recurringTxs.forEach(t => {
+    const key = `${t.type}|${t.category}|${t.description}`;
+    (seriesMap[key] = seriesMap[key] || []).push(t);
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  const todayDay = today.getDate();
+
+  const toInsert = [];
+
+  Object.values(seriesMap).forEach(series => {
+    series.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const template = series[0];
+    const templateDate = new Date(template.date + 'T00:00:00');
+    const dueDay = templateDate.getDate();
+
+    const existingMonths = new Set(series.map(t => t.date.slice(0, 7)));
+
+    let cursorYear = templateDate.getFullYear();
+    let cursorMonth = templateDate.getMonth();
+
+    // Safety cap so a long-dormant series can't generate an unbounded backlog
+    for (let guard = 0; guard < 24; guard++) {
+      cursorMonth++;
+      if (cursorMonth > 11) { cursorMonth = 0; cursorYear++; }
+
+      if (cursorYear > todayYear || (cursorYear === todayYear && cursorMonth > todayMonth)) break;
+
+      const lastDayOfCursorMonth = new Date(cursorYear, cursorMonth + 1, 0).getDate();
+      const occurrenceDay = Math.min(dueDay, lastDayOfCursorMonth);
+
+      const isCurrentMonth = cursorYear === todayYear && cursorMonth === todayMonth;
+      if (isCurrentMonth && todayDay < occurrenceDay) break; // due date hasn't arrived yet
+
+      const monthKey = `${cursorYear}-${String(cursorMonth + 1).padStart(2, '0')}`;
+      if (existingMonths.has(monthKey)) continue;
+
+      toInsert.push({
+        user_id: user.id,
+        date: `${monthKey}-${String(occurrenceDay).padStart(2, '0')}`,
+        type: template.type,
+        category: template.category,
+        description: template.description,
+        value: template.value,
+        recurring: true
+      });
+      existingMonths.add(monthKey);
+    }
+  });
+
+  if (toInsert.length === 0) return;
+
+  const { data, error } = await supabase.from('transactions').insert(toInsert).select();
+  if (error) {
+    console.error('[generateDueRecurringOccurrences] Falha ao gerar ocorrências recorrentes:', error);
+    return;
+  }
+  if (data) {
+    data.forEach(t => transactions.push({
+      id: t.id, date: t.date, type: t.type, category: t.category,
+      description: t.description, value: t.value, recurring: t.recurring
+    }));
+  }
 }
 
 function initDateFilterState() {
@@ -402,16 +525,39 @@ function setupEventListeners() {
     });
   });
 
-  // Hard Reset — clear all data and restart onboarding
+  // Hard Reset — delete all of the user's transactions on Supabase and restart onboarding
   const btnReset = document.getElementById('btn-reset-data');
   if (btnReset) {
-    btnReset.addEventListener('click', () => {
-      if (confirm('⚠️ Isso vai apagar TODOS os dados do Sobrevive. Confirma o reset?')) {
-        localStorage.clear();
-        location.reload();
-      }
-    });
+    btnReset.addEventListener('click', handleHardReset);
   }
+}
+
+async function handleHardReset() {
+  if (!confirm('⚠️ Isso vai apagar TODOS os seus lançamentos do Previo, permanentemente. Confirma o reset?')) return;
+  if (!confirm('Tem certeza mesmo? Essa ação não pode ser desfeita.')) return;
+
+  const btnReset = document.getElementById('btn-reset-data');
+  if (btnReset) {
+    btnReset.disabled = true;
+    btnReset.innerText = 'Apagando...';
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { location.reload(); return; }
+
+  const { error } = await supabase.from('transactions').delete().eq('user_id', user.id);
+
+  if (error) {
+    alert('Não foi possível apagar os dados agora. Verifique sua conexão e tente novamente.');
+    if (btnReset) {
+      btnReset.disabled = false;
+      btnReset.innerText = 'Apagar todos os dados e reiniciar';
+    }
+    return;
+  }
+
+  localStorage.clear();
+  location.reload();
 }
 
 function handleApplyDateFilter() {
@@ -441,7 +587,7 @@ async function submitOnboardingData() {
   const monthlyIncome = parseFloat(DOM.inputMonthlyIncome.value);
   const mainFixed = parseFloat(DOM.inputMainFixed.value);
   const mainFixedDesc = DOM.inputMainFixedDesc.value.trim() || 'Despesa Fixa';
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateStr();
 
   const toInsert = [];
   toInsert.push({ user_id: user.id, date: todayStr, type: 'entrada', category: 'Saldo Inicial', description: 'Saldo Inicial', value: initialBalance, recurring: false });
@@ -496,10 +642,7 @@ function openModal(type = 'saída', editId = null) {
   DOM.modalInputDesc.value = '';
   DOM.modalInputRecurring.checked = false;
   
-  const today = new Date();
-  const offset = today.getTimezoneOffset();
-  const localToday = new Date(today.getTime() - (offset * 60 * 1000));
-  DOM.modalInputDate.value = localToday.toISOString().split('T')[0];
+  DOM.modalInputDate.value = getLocalDateStr();
   
   if (editId) {
     const tx = transactions.find(t => t.id === editId);
@@ -1024,7 +1167,7 @@ function renderDashboardChart() {
   const dailyBalances = {};
   
   historicalDates.forEach(date => {
-    const key = date.toISOString().split('T')[0];
+    const key = getLocalDateStr(date);
     dailyBalances[key] = 0;
   });
   
@@ -1032,7 +1175,7 @@ function renderDashboardChart() {
   const reverseHistDates = [...historicalDates].reverse();
   
   reverseHistDates.forEach(date => {
-    const key = date.toISOString().split('T')[0];
+    const key = getLocalDateStr(date);
     dailyBalances[key] = tempBal;
     
     const dayTxs = sortedTxs.filter(t => t.date === key);
@@ -1046,7 +1189,7 @@ function renderDashboardChart() {
   });
   
   historicalDates.forEach(date => {
-    const key = date.toISOString().split('T')[0];
+    const key = getLocalDateStr(date);
     const opts = { day: 'numeric', month: 'short' };
     labels.push(date.toLocaleDateString('pt-BR', opts).replace('.', ''));
     historyData.push(dailyBalances[key]);
@@ -1307,10 +1450,10 @@ function renderLaunchesList() {
     const header = document.createElement('div');
     header.className = 'group-date';
     
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateStr();
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = getLocalDateStr(yesterday);
     
     if (dateStr === todayStr) {
       header.innerText = 'Hoje';
@@ -1727,8 +1870,8 @@ aiSheet.input.addEventListener('keydown', (e) => {
 aiSheet.btnSubmit.addEventListener('click', handleAISubmit);
 
 async function callClaudeAPI(userText) {
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const today = getLocalDateStr();
+  const yesterday = getLocalDateStr(new Date(Date.now() - 86400000));
 
   const systemPrompt = `Você é um parser financeiro. O usuário vai descrever uma transação financeira em linguagem natural, em português brasileiro informal.
 
@@ -1755,10 +1898,14 @@ Regras de inferência:
 - Se valor não identificado → value: 0
 - Se não for transação financeira → {"error": "não interpretável"}`;
 
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada. Faça login novamente.');
+
   const response = await fetch('/api/claude', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
@@ -1800,7 +1947,7 @@ async function handleAISubmit() {
 
       DOM.modalInputValue.value = result.value;
       DOM.modalInputDesc.value  = result.description || '';
-      DOM.modalInputDate.value  = result.date || new Date().toISOString().split('T')[0];
+      DOM.modalInputDate.value  = result.date || getLocalDateStr();
       DOM.modalInputRecurring.checked = !!result.recurring;
 
       if (result.category) {

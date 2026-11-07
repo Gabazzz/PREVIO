@@ -71,6 +71,14 @@
     </div>
   </div>
 
+  <!-- Tela de Erro de Carregamento (falha de rede ao buscar dados) -->
+  <div id="screen-load-error" style="display:none; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:2rem; background:#020617; text-align:center;">
+    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#f59e0b" stroke-width="2" style="margin-bottom:16px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <p style="color:#f1f5f9; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem; margin-bottom:8px;">Não foi possível carregar seus dados</p>
+    <p style="color:#64748b; font-size:0.85rem; max-width:300px; margin-bottom:24px; line-height:1.5;">Verifique sua conexão com a internet e tente novamente. Seus dados estão seguros — nada foi apagado.</p>
+    <button id="btn-retry-load" style="padding:0.75rem 1.5rem; background:#10d98c; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.85rem; cursor:pointer;">TENTAR NOVAMENTE</button>
+  </div>
+
   <!-- Main Viewport Container -->
   <div class="phone-viewport">
     
@@ -559,7 +567,7 @@
         </div>
         <button id="btn-apply-date-filter" class="hud-btn primary" style="width:100%;">Aplicar Filtro</button>
         <!-- Reset destrutivo — posição segura, longe do fluxo principal -->
-        <button id="btn-reset-data" class="hud-btn" style="width:100%; border-color: rgba(239,68,68,0.2); color: var(--text-muted); font-size: 0.75rem; margin-top: -8px;" onclick="if (confirm('⚠️ Isso vai apagar TODOS os dados do Previo. Confirma o reset?')) { /* logic */ }">
+        <button id="btn-reset-data" class="hud-btn" style="width:100%; border-color: rgba(239,68,68,0.2); color: var(--text-muted); font-size: 0.75rem; margin-top: -8px;">
           Apagar todos os dados e reiniciar
         </button>
       </div>
