@@ -8,6 +8,20 @@ const supabase = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyam92Z2pobm1nbHZ0Y2xwd3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTgzMTIsImV4cCI6MjA5NTMzNDMxMn0.ngTL5_rJ0NnCyRBuwKcSylnQBp6kNDFo5-73o5dPat4'
 );
 
+// "Esqueci minha senha": when the user clicks the reset link from their email,
+// Supabase redirects back here with a recovery session and fires this event —
+// we intercept it to show the "set a new password" screen instead of the normal
+// dashboard/onboarding flow.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    document.getElementById('screen-auth').style.display = 'none';
+    document.getElementById('screen-load-error').style.display = 'none';
+    const viewport = document.querySelector('.phone-viewport');
+    if (viewport) viewport.style.display = 'none';
+    document.getElementById('screen-reset-password').style.display = 'flex';
+  }
+});
+
 // Date helper — returns YYYY-MM-DD for a LOCAL calendar date.
 // Using Date#toISOString() for "today"/"ontem" is a bug for any timezone behind UTC
 // (like Brazil): toISOString() converts to UTC first, so in the evening the UTC
@@ -180,6 +194,8 @@ const CATEGORY_COLORS = {
 
 // 4. Initialization
 async function initApp() {
+  document.getElementById('screen-reset-password').style.display = 'none';
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     document.getElementById('screen-auth').style.display = 'flex';
@@ -1993,19 +2009,70 @@ window.showTab = function(tab) {
   document.getElementById('tab-signup').style.background = tab === 'signup' ? '#10d98c' : 'transparent';
   document.getElementById('tab-signup').style.color = tab === 'signup' ? '#020617' : '#64748b';
   document.getElementById('btn-auth-submit').innerText = tab === 'login' ? 'ENTRAR' : 'CRIAR CONTA';
+  document.getElementById('link-forgot-password').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('auth-success').style.display = 'none';
+};
+
+// Switches the auth screen into "esqueci minha senha" mode: hides the password
+// field and tabs, repurposes the same submit button to send the reset email.
+window.showForgotPasswordMode = function() {
+  currentAuthMode = 'forgot';
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-password').style.display = 'none';
+  document.getElementById('link-forgot-password').style.display = 'none';
+  document.getElementById('link-back-to-login').style.display = 'block';
+  document.getElementById('btn-auth-submit').innerText = 'ENVIAR LINK DE REDEFINIÇÃO';
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('auth-success').style.display = 'none';
+};
+
+window.backToLogin = function() {
+  document.getElementById('auth-tabs').style.display = 'flex';
+  document.getElementById('auth-password').style.display = 'block';
+  document.getElementById('link-back-to-login').style.display = 'none';
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('auth-success').style.display = 'none';
+  showTab('login');
 };
 
 window.handleAuth = async function() {
   const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
   const errorEl = document.getElementById('auth-error');
+  const successEl = document.getElementById('auth-success');
   const btn = document.getElementById('btn-auth-submit');
 
+  errorEl.style.display = 'none';
+  successEl.style.display = 'none';
+
+  if (currentAuthMode === 'forgot') {
+    if (!email) { errorEl.innerText = 'Informe seu e-mail.'; errorEl.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.innerText = 'Enviando...';
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+
+    btn.disabled = false;
+    btn.innerText = 'ENVIAR LINK DE REDEFINIÇÃO';
+
+    if (error) {
+      errorEl.innerText = error.message;
+      errorEl.style.display = 'block';
+    } else {
+      successEl.innerText = 'Link enviado! Confira seu e-mail (e a caixa de spam) para redefinir a senha.';
+      successEl.style.display = 'block';
+    }
+    return;
+  }
+
+  const password = document.getElementById('auth-password').value;
   if (!email || !password) { errorEl.innerText = 'Preencha email e senha.'; errorEl.style.display = 'block'; return; }
 
   btn.disabled = true;
   btn.innerText = 'Aguarde...';
-  errorEl.style.display = 'none';
 
   let result;
   if (currentAuthMode === 'login') {
@@ -2022,6 +2089,42 @@ window.handleAuth = async function() {
   } else {
     initApp();
   }
+};
+
+window.handleSetNewPassword = async function() {
+  const newPass = document.getElementById('reset-password-new').value;
+  const confirmPass = document.getElementById('reset-password-confirm').value;
+  const errorEl = document.getElementById('reset-password-error');
+  const btn = document.getElementById('btn-reset-password-submit');
+
+  errorEl.style.display = 'none';
+
+  if (!newPass || newPass.length < 6) {
+    errorEl.innerText = 'A senha deve ter pelo menos 6 caracteres.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (newPass !== confirmPass) {
+    errorEl.innerText = 'As senhas não coincidem.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Salvando...';
+
+  const { error } = await supabase.auth.updateUser({ password: newPass });
+
+  if (error) {
+    errorEl.innerText = error.message;
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerText = 'SALVAR NOVA SENHA';
+    return;
+  }
+
+  document.getElementById('screen-reset-password').style.display = 'none';
+  initApp();
 };
 
 window.logout = async function() {

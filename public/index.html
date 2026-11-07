@@ -57,7 +57,7 @@
     </div>
 
     <!-- Tabs Login/Cadastro -->
-    <div style="display:flex; gap:0; margin-bottom:1.5rem; background:#0f1729; border-radius:10px; padding:4px;">
+    <div id="auth-tabs" style="display:flex; gap:0; margin-bottom:1.5rem; background:#0f1729; border-radius:10px; padding:4px;">
       <button id="tab-login" onclick="showTab('login')" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:#10d98c; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; cursor:pointer; font-size:0.8rem;">Login</button>
       <button id="tab-signup" onclick="showTab('signup')" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:transparent; color:#64748b; font-weight:700; font-family:'Space Grotesk',sans-serif; cursor:pointer; font-size:0.8rem;">Cadastro</button>
     </div>
@@ -67,7 +67,24 @@
       <input id="auth-email" type="email" placeholder="seu@email.com" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
       <input id="auth-password" type="password" placeholder="Senha" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
       <button id="btn-auth-submit" onclick="handleAuth()" style="padding:0.875rem; background:#10d98c; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.9rem; cursor:pointer; margin-top:0.25rem;">ENTRAR</button>
+      <button id="link-forgot-password" type="button" onclick="showForgotPasswordMode()" style="background:none; border:none; color:#64748b; font-size:0.78rem; font-family:'Inter',sans-serif; cursor:pointer; text-decoration:underline; align-self:center; margin-top:-0.25rem; padding:4px;">Esqueci minha senha</button>
+      <button id="link-back-to-login" type="button" onclick="backToLogin()" style="display:none; background:none; border:none; color:#64748b; font-size:0.78rem; font-family:'Inter',sans-serif; cursor:pointer; text-decoration:underline; align-self:center; padding:4px;">← Voltar para o login</button>
       <p id="auth-error" style="color:#ef4444; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif;"></p>
+      <p id="auth-success" style="color:#10d98c; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif; line-height:1.4;"></p>
+    </div>
+  </div>
+
+  <!-- Tela de Redefinição de Senha (aberta via link recebido por e-mail) -->
+  <div id="screen-reset-password" style="display:none; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:2rem; background:#020617;">
+    <div style="margin-bottom:2rem; text-align:center;">
+      <p style="color:#f1f5f9; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.1rem; margin-bottom:8px;">Defina sua nova senha</p>
+      <p style="color:#64748b; font-size:0.8rem; max-width:300px;">Escolha uma nova senha para voltar a acessar o Previo.</p>
+    </div>
+    <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:0.75rem;">
+      <input id="reset-password-new" type="password" placeholder="Nova senha" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
+      <input id="reset-password-confirm" type="password" placeholder="Confirme a nova senha" style="padding:0.875rem 1rem; background:#0f1729; border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none;" />
+      <button id="btn-reset-password-submit" onclick="handleSetNewPassword()" style="padding:0.875rem; background:#10d98c; border:none; border-radius:10px; color:#020617; font-weight:700; font-family:'Space Grotesk',sans-serif; font-size:0.9rem; cursor:pointer; margin-top:0.25rem;">SALVAR NOVA SENHA</button>
+      <p id="reset-password-error" style="color:#ef4444; font-size:0.8rem; text-align:center; display:none; font-family:'Inter',sans-serif;"></p>
     </div>
   </div>
 
