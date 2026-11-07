@@ -4,7 +4,7 @@
 
 import { DOM } from './dom.js';
 import { CATEGORY_COLORS, DELTA_STORAGE_KEY } from './constants.js';
-import { getLocalDateStr, formatBRL } from './utils.js';
+import { getLocalDateStr, formatBRL, animateNumber } from './utils.js';
 import { stats, runCoreCalculations } from './calculations.js';
 import {
   transactions, currentView,
@@ -15,6 +15,7 @@ import { openModal, handleModalDelete } from './transaction-modal.js';
 
 let chartInstance = null;
 let touchStartX = 0;
+let dashboardEnterPlayed = false;
 
 // 8. View Renderers
 export function processAndRenderAll() {
@@ -37,6 +38,14 @@ export function processAndRenderAll() {
   renderDashboardData();
   renderDashboardChart();
 
+  // One-time staggered entrance for the dashboard's cards, played only on
+  // the very first paint (not on every data refresh/re-render).
+  if (!dashboardEnterPlayed) {
+    dashboardEnterPlayed = true;
+    const dashboardView = document.getElementById('view-dashboard');
+    if (dashboardView) dashboardView.classList.add('view-dashboard-enter');
+  }
+
   // Update header indicators
   DOM.systemStatusDot.className = `pulse-dot ${stats.zone === 'safe' ? '' : stats.zone === 'attention' ? 'warning' : 'critical'}`;
 
@@ -52,7 +61,12 @@ export function processAndRenderAll() {
 export function renderDashboardData() {
   // Update Autonomy Card
   const daysNum = isFinite(stats.daysRemaining) ? Math.floor(stats.daysRemaining) : '∞';
-  DOM.hudDaysNumber.innerText = daysNum;
+  if (daysNum === '∞') {
+    delete DOM.hudDaysNumber.dataset.animValue;
+    DOM.hudDaysNumber.innerText = '∞';
+  } else {
+    animateNumber(DOM.hudDaysNumber, daysNum, (v) => Math.round(v).toString());
+  }
 
   // Delta temporal — comparação com último valor salvo
   const lastDays = parseFloat(localStorage.getItem(DELTA_STORAGE_KEY) || '0');
@@ -115,8 +129,8 @@ export function renderDashboardData() {
   }
 
   // Key Metrics Panel
-  DOM.metricBalance.innerText = formatBRL(stats.currentBalance);
-  DOM.metricFreeBalance.innerText = formatBRL(stats.freeBalance);
+  animateNumber(DOM.metricBalance, stats.currentBalance, formatBRL);
+  animateNumber(DOM.metricFreeBalance, stats.freeBalance, formatBRL);
 
   // Color code free balance if committed ratio is > 30%
   const commitRatio = stats.currentBalance > 0 ? stats.committedFixed / stats.currentBalance : 0;
@@ -127,7 +141,7 @@ export function renderDashboardData() {
   }
 
   // Variable burn rate
-  DOM.metricBurnrate.innerText = `${formatBRL(stats.burnRate)}/dia`;
+  animateNumber(DOM.metricBurnrate, stats.burnRate, (v) => `${formatBRL(v)}/dia`);
 
   // Trend Indicator beside Burn Rate
   if (stats.burnAccelerating) {
@@ -177,8 +191,8 @@ export function renderDashboardData() {
   const ceilSafe = Math.max(0, stats.dailyCeilingSafe);
   const ceilBreakeven = Math.max(0, stats.dailyCeilingBreakeven);
 
-  DOM.ceilingSafeValue.innerText = formatBRL(ceilSafe);
-  DOM.ceilingBreakevenValue.innerText = formatBRL(ceilBreakeven);
+  animateNumber(DOM.ceilingSafeValue, ceilSafe, formatBRL);
+  animateNumber(DOM.ceilingBreakevenValue, ceilBreakeven, formatBRL);
   DOM.ceilingSubtext.innerText = `Faltam ${daysLeftInMonth} dias no mês`;
 
   if (stats.freeBalance <= 0) {

@@ -390,7 +390,28 @@ body {
   align-items: baseline;
   gap: 8px;
   margin: 4px 0;
+  position: relative;
 }
+
+/* Soft glow behind the hero number for depth — the one place this card
+   spends its "boldness", per the zone's color */
+.survival-days-display::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 160px;
+  height: 120px;
+  background: radial-gradient(circle, var(--accent-safe) 0%, transparent 70%);
+  opacity: 0.16;
+  filter: blur(8px);
+  z-index: -1;
+  transition: opacity 0.5s ease;
+}
+
+.warning .survival-days-display::before { background: radial-gradient(circle, var(--accent-warning) 0%, transparent 70%); }
+.critical .survival-days-display::before { background: radial-gradient(circle, var(--accent-critical) 0%, transparent 70%); opacity: 0.22; }
 
 .survival-days-number {
   font-family: var(--font-mono);
@@ -508,8 +529,29 @@ body {
   letter-spacing: 1px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
+
+/* Metric icon badges — replace emoji with a consistent stroke-icon language */
+.metric-icon-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-icon-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.metric-icon-badge.safe { background: rgba(16, 217, 140, 0.12); color: var(--accent-safe); }
+.metric-icon-badge.warning { background: rgba(245, 158, 11, 0.12); color: var(--accent-warning); }
+.metric-icon-badge.critical { background: rgba(239, 68, 68, 0.12); color: var(--accent-critical); }
+.metric-icon-badge.blue { background: rgba(59, 130, 246, 0.12); color: var(--accent-blue); }
 
 .metric-value {
   font-family: var(--font-mono);
@@ -916,6 +958,12 @@ body {
   height: 24px;
   stroke: #020617;
   stroke-width: 3;
+}
+
+.fab-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 0 10px rgba(16, 217, 140, 0.5),
+              inset 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
 .fab-btn:active {
@@ -1932,4 +1980,46 @@ input:checked + .slider:before {
   background: rgba(59, 130, 246, 0.12);
   color: var(--accent-blue);
   border-bottom-color: rgba(59, 130, 246, 0.25);
+}
+
+/* =========================================
+   Entrance choreography (first dashboard paint only)
+   ========================================= */
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.view-dashboard-enter > * {
+  animation: card-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.view-dashboard-enter > *:nth-child(1) { animation-delay: 0ms; }
+.view-dashboard-enter > *:nth-child(2) { animation-delay: 70ms; }
+.view-dashboard-enter > *:nth-child(3) { animation-delay: 110ms; }
+.view-dashboard-enter > *:nth-child(4) { animation-delay: 150ms; }
+.view-dashboard-enter > *:nth-child(5) { animation-delay: 190ms; }
+.view-dashboard-enter > *:nth-child(6) { animation-delay: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .view-dashboard-enter > * {
+    animation: none;
+  }
+}
+
+/* A number that just finished counting up gets a tiny, satisfying pop —
+   the "confirmed" feeling behind Mercado Pago-style value animations */
+@keyframes value-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.value-pop {
+  animation: value-pop 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .value-pop { animation: none; }
 }
