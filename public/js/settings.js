@@ -3,11 +3,13 @@
    ========================================================================== */
 
 import { DOM } from './dom.js';
-import { supabase } from './supabase-client.js';
+import { supabase, getCurrentUser } from './supabase-client.js';
 import { transactions, setTransactions } from './state.js';
 import { formatBRL } from './utils.js';
 import { openModal } from './transaction-modal.js';
 import { processAndRenderAll } from './render.js';
+import { isOnline, queueUpdate, cacheTransactionsLocally } from './offline.js';
+import { updateOfflineBanner } from './offline-ui.js';
 
 // Returns one entry per active recurring series (grouped the same way the
 // recurring engine groups them), using the most recent occurrence as the
@@ -29,7 +31,7 @@ function getActiveRecurringSeries() {
 }
 
 export async function openSettingsModal() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   DOM.settingsAccountEmail.innerText = user ? user.email : '';
   renderRecurringSettingsList();
   DOM.modalSettings.classList.add('active');
@@ -103,20 +105,31 @@ async function stopRecurringSeries(key, description) {
   if (!confirm(`Parar a recorrência de "${description}"? Os lançamentos já feitos continuam no histórico, mas o radar não vai mais gerar novas ocorrências automaticamente.`)) return;
 
   const [type, category, desc] = key.split('|');
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  const matchingIds = transactions
+    .filter(t => t.type === type && t.category === category && t.description === desc)
+    .map(t => t.id);
 
-  const { error } = await supabase
-    .from('transactions')
-    .update({ recurring: false })
-    .eq('user_id', user.id)
-    .eq('type', type)
-    .eq('category', category)
-    .eq('description', desc);
+  if (isOnline()) {
+    const user = await getCurrentUser();
+    if (!user) return;
 
-  if (error) {
-    alert('Não foi possível parar essa recorrência agora. Tente novamente.');
-    return;
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ recurring: false })
+        .eq('user_id', user.id)
+        .eq('type', type)
+        .eq('category', category)
+        .eq('description', desc);
+      if (error) throw error;
+    } catch (e) {
+      console.error('[stopRecurringSeries] Falha ao atualizar online, salvando para sincronizar depois:', e);
+      matchingIds.forEach(id => queueUpdate(id, { recurring: false }));
+    }
+  } else {
+    // queueUpdate() already merges into a still-pending insert when the id
+    // is a tempId, so this works whether each row has synced yet or not.
+    matchingIds.forEach(id => queueUpdate(id, { recurring: false }));
   }
 
   setTransactions(transactions.map(t => {
@@ -126,6 +139,8 @@ async function stopRecurringSeries(key, description) {
     return t;
   }));
 
+  cacheTransactionsLocally(transactions);
+  updateOfflineBanner();
   renderRecurringSettingsList();
   processAndRenderAll();
 }

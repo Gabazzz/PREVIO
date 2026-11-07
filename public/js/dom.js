@@ -102,6 +102,10 @@ export const DOM = {
   analysisHabitText: document.getElementById('analysis-habit-text'),
   analysisSmartRecommendation: document.getElementById('analysis-smart-recommendation'),
 
+  // Offline banner
+  offlineBanner: document.getElementById('offline-banner'),
+  offlineBannerText: document.getElementById('offline-banner-text'),
+
   // Settings
   btnOpenSettings: document.getElementById('btn-open-settings'),
   modalSettings: document.getElementById('modal-settings'),

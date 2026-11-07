@@ -21,3 +21,23 @@ supabase.auth.onAuthStateChange((event) => {
     document.getElementById('screen-reset-password').style.display = 'flex';
   }
 });
+
+// supabase.auth.getUser() validates the session against the server, so it
+// fails outright with no network. getSession() just reads the session
+// supabase-js already persisted in localStorage — no network needed — so a
+// returning user who's offline still gets recognized as logged in and sees
+// their cached data instead of being bounced to the login screen.
+export async function getCurrentUser() {
+  try {
+    const { data } = await supabase.auth.getUser();
+    if (data && data.user) return data.user;
+  } catch (e) {
+    // network error — fall through to the local session
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    return (data && data.session && data.session.user) || null;
+  } catch (e) {
+    return null;
+  }
+}

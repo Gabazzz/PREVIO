@@ -3,17 +3,20 @@
    ========================================================================== */
 
 import { DOM } from './dom.js';
-import { supabase } from './supabase-client.js';
+import { getCurrentUser } from './supabase-client.js';
 import { transactions } from './state.js';
 import { loadData } from './data.js';
 import { setupEventListeners } from './events.js';
 import { populateMonthSelector, processAndRenderAll } from './render.js';
 import { initDateFilterState } from './date-filter.js';
+import { setupOfflineListeners, updateOfflineBanner } from './offline-ui.js';
 
 export async function initApp() {
   document.getElementById('screen-reset-password').style.display = 'none';
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getCurrentUser() falls back to the locally persisted session when there's
+  // no network, so a logged-in user reopening the app offline still gets in.
+  const user = await getCurrentUser();
   if (!user) {
     document.getElementById('screen-auth').style.display = 'flex';
     document.getElementById('screen-load-error').style.display = 'none';
@@ -40,8 +43,10 @@ export async function initApp() {
   document.querySelector('.phone-viewport').style.display = 'flex';
 
   setupEventListeners();
+  setupOfflineListeners();
   populateMonthSelector();
   initDateFilterState();
+  updateOfflineBanner();
 
   if (transactions.length === 0) {
     DOM.screenOnboarding.style.display = 'flex';

@@ -2,7 +2,7 @@
    Previo HUD — Data Loading, Onboarding Submission & Hard Reset
    ========================================================================== */
 
-import { supabase } from './supabase-client.js';
+import { supabase, getCurrentUser } from './supabase-client.js';
 import { DOM } from './dom.js';
 import { FILTER_STORAGE_KEY } from './constants.js';
 import { getLocalDateStr } from './utils.js';
@@ -11,12 +11,23 @@ import {
   setActivePeriodFilter
 } from './state.js';
 import { populateMonthSelector, processAndRenderAll } from './render.js';
+import {
+  isOnline, generateTempId, queueInsert,
+  cacheTransactionsLocally, getLocallyCachedTransactions,
+  applyQueuedInsertsToTransactions, syncPendingOperations
+} from './offline.js';
+import { updateOfflineBanner } from './offline-ui.js';
 
 // Load from Supabase. Returns true on success, false on failure — callers must
 // NEVER treat "false" the same as "zero transactions" (that would misfire onboarding
 // and risk duplicating the user's initial balance on a flaky connection).
+//
+// Offline-aware: if the network fetch fails but we have a local cache from a
+// previous successful load, we fall back to that cache instead of showing
+// the hard error screen — the dashboard just runs on slightly-stale data
+// until the connection comes back.
 export async function loadData() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return false;
 
   const savedFilter = localStorage.getItem(FILTER_STORAGE_KEY);
@@ -24,14 +35,26 @@ export async function loadData() {
     try { setActivePeriodFilter(JSON.parse(savedFilter)); } catch (e) { /* ignore corrupt value */ }
   }
 
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('date', { ascending: false });
+  let data = null, error = null;
+  try {
+    const res = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
+    data = res.data;
+    error = res.error;
+  } catch (e) {
+    error = e;
+  }
 
   if (error || !data) {
     console.error('[loadData] Falha ao carregar transações:', error);
+    const cached = getLocallyCachedTransactions();
+    if (cached) {
+      setTransactions(cached);
+      return true; // degrade gracefully: show the last known data, offline-style
+    }
     return false;
   }
 
@@ -45,7 +68,26 @@ export async function loadData() {
     recurring: t.recurring
   })));
 
+  // Re-surface any lançamentos created while offline that haven't synced yet —
+  // the server obviously doesn't know about them.
+  setTransactions(applyQueuedInsertsToTransactions(transactions));
+
   await generateDueRecurringOccurrences();
+
+  // If there's anything still waiting from a previous offline session, try to
+  // push it to the server now (rendering happens afterwards, in initApp).
+  if (isOnline()) {
+    const { idMap } = await syncPendingOperations(supabase, user.id);
+    if (idMap.length > 0) {
+      setTransactions(transactions.map(t => {
+        const match = idMap.find(m => m.tempId === t.id);
+        return match ? { ...t, id: match.realId } : t;
+      }));
+    }
+  }
+
+  cacheTransactionsLocally(transactions);
+  updateOfflineBanner();
 
   return true;
 }
@@ -63,11 +105,14 @@ export async function saveData() {
 // moment the user didn't manually re-enter them. This generates the missing
 // occurrences (catching up on any skipped months) whenever data is loaded, so the
 // dashboard numbers stay trustworthy without the user having to think about it.
+//
+// Offline-aware: when there's no connection, the new occurrences are created
+// locally with temporary ids and queued to sync once the connection returns.
 async function generateDueRecurringOccurrences() {
   const recurringTxs = transactions.filter(t => t.recurring);
   if (recurringTxs.length === 0) return;
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return;
 
   // Group into series by identity (same type + category + description = same bill)
@@ -127,21 +172,35 @@ async function generateDueRecurringOccurrences() {
 
   if (toInsert.length === 0) return;
 
-  const { data, error } = await supabase.from('transactions').insert(toInsert).select();
-  if (error) {
-    console.error('[generateDueRecurringOccurrences] Falha ao gerar ocorrências recorrentes:', error);
-    return;
+  if (isOnline()) {
+    try {
+      const { data, error } = await supabase.from('transactions').insert(toInsert).select();
+      if (error) throw error;
+      if (data) {
+        data.forEach(t => transactions.push({
+          id: t.id, date: t.date, type: t.type, category: t.category,
+          description: t.description, value: t.value, recurring: t.recurring
+        }));
+      }
+      return;
+    } catch (e) {
+      console.error('[generateDueRecurringOccurrences] Falha ao gerar ocorrências recorrentes, mantendo localmente:', e);
+      // fall through to the offline path below
+    }
   }
-  if (data) {
-    data.forEach(t => transactions.push({
-      id: t.id, date: t.date, type: t.type, category: t.category,
-      description: t.description, value: t.value, recurring: t.recurring
-    }));
-  }
+
+  toInsert.forEach(payload => {
+    const tempId = generateTempId();
+    transactions.push({
+      id: tempId, date: payload.date, type: payload.type, category: payload.category,
+      description: payload.description, value: payload.value, recurring: payload.recurring
+    });
+    queueInsert(tempId, payload);
+  });
 }
 
 export async function submitOnboardingData() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const initialBalance = parseFloat(DOM.inputInitialBalance.value);
   const monthlyIncome = parseFloat(DOM.inputMonthlyIncome.value);
   const mainFixed = parseFloat(DOM.inputMainFixed.value);
@@ -153,16 +212,46 @@ export async function submitOnboardingData() {
   if (!isNaN(monthlyIncome) && monthlyIncome > 0) toInsert.push({ user_id: user.id, date: todayStr, type: 'entrada', category: 'Salário', description: 'Renda Mensal Estimada', value: monthlyIncome, recurring: true });
   if (!isNaN(mainFixed) && mainFixed > 0) toInsert.push({ user_id: user.id, date: todayStr, type: 'saída', category: 'Moradia', description: mainFixedDesc, value: mainFixed, recurring: true });
 
-  const { data, error } = await supabase.from('transactions').insert(toInsert).select();
-  if (!error && data) setTransactions(data.map(t => ({ id: t.id, date: t.date, type: t.type, category: t.category, description: t.description, value: t.value, recurring: t.recurring })));
+  let inserted = false;
+  if (isOnline()) {
+    try {
+      const { data, error } = await supabase.from('transactions').insert(toInsert).select();
+      if (error) throw error;
+      if (data) {
+        setTransactions(data.map(t => ({ id: t.id, date: t.date, type: t.type, category: t.category, description: t.description, value: t.value, recurring: t.recurring })));
+        inserted = true;
+      }
+    } catch (e) {
+      console.error('[submitOnboardingData] Falha ao salvar onboarding online, salvando localmente:', e);
+    }
+  }
 
+  if (!inserted) {
+    const newTxs = toInsert.map(payload => {
+      const tempId = generateTempId();
+      queueInsert(tempId, payload);
+      return { id: tempId, date: payload.date, type: payload.type, category: payload.category, description: payload.description, value: payload.value, recurring: payload.recurring };
+    });
+    setTransactions(newTxs);
+  }
+
+  cacheTransactionsLocally(transactions);
+  updateOfflineBanner();
   populateMonthSelector();
   DOM.screenOnboarding.style.opacity = '0';
   setTimeout(() => { DOM.screenOnboarding.style.display = 'none'; processAndRenderAll(); }, 300);
 }
 
-// Hard Reset — delete all of the user's transactions on Supabase and restart onboarding
+// Hard Reset — delete all of the user's transactions on Supabase and restart onboarding.
+// Requires a live connection: deleting everything is destructive and irreversible,
+// so it's not something to queue up and risk applying later against data the
+// user may have changed in the meantime.
 export async function handleHardReset() {
+  if (!isOnline()) {
+    alert('Conecte-se à internet para apagar os dados.');
+    return;
+  }
+
   if (!confirm('⚠️ Isso vai apagar TODOS os seus lançamentos do Previo, permanentemente. Confirma o reset?')) return;
   if (!confirm('Tem certeza mesmo? Essa ação não pode ser desfeita.')) return;
 
@@ -172,7 +261,7 @@ export async function handleHardReset() {
     btnReset.innerText = 'Apagando...';
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) { location.reload(); return; }
 
   const { error } = await supabase.from('transactions').delete().eq('user_id', user.id);

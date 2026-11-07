@@ -5,13 +5,18 @@
 import { DOM } from './dom.js';
 import { CATEGORIES } from './constants.js';
 import { getLocalDateStr } from './utils.js';
-import { supabase } from './supabase-client.js';
+import { supabase, getCurrentUser } from './supabase-client.js';
 import {
   transactions, setTransactions,
   activeEditId, setActiveEditId,
   activeSwipedItem, setActiveSwipedItem
 } from './state.js';
 import { processAndRenderAll } from './render.js';
+import {
+  isOnline, isTempId, generateTempId,
+  queueInsert, queueUpdate, queueDelete, cacheTransactionsLocally
+} from './offline.js';
+import { updateOfflineBanner } from './offline-ui.js';
 
 let selectedCategory = '';
 
@@ -104,25 +109,60 @@ export async function handleModalSubmit() {
   if (isNaN(val) || val <= 0) { alert('Por favor, insira um valor válido maior que zero.'); return; }
   if (!date) { alert('Por favor, insira uma data válida.'); return; }
 
-  const { data: { user } } = await supabase.auth.getUser();
-
   if (activeEditId) {
-    const { error } = await supabase.from('transactions').update({
-      type, value: val, category: selectedCategory,
-      description: desc || selectedCategory, date, recurring
-    }).eq('id', activeEditId);
-    if (!error) {
+    const changes = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring };
+
+    // A tempId means this row only exists locally (created offline and not
+    // synced yet) — there's nothing to UPDATE on the server, so the change
+    // is merged straight into the still-pending insert instead.
+    if (isTempId(activeEditId)) {
+      queueUpdate(activeEditId, changes);
+      applyLocalChange(changes);
+    } else if (isOnline()) {
+      try {
+        const { error } = await supabase.from('transactions').update(changes).eq('id', activeEditId);
+        if (error) throw error;
+        applyLocalChange(changes);
+      } catch (e) {
+        console.error('[handleModalSubmit] Falha ao atualizar online, salvando para sincronizar depois:', e);
+        queueUpdate(activeEditId, changes);
+        applyLocalChange(changes);
+      }
+    } else {
+      queueUpdate(activeEditId, changes);
+      applyLocalChange(changes);
+    }
+
+    function applyLocalChange(c) {
       const index = transactions.findIndex(t => t.id === activeEditId);
-      if (index !== -1) transactions[index] = { ...transactions[index], type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring };
+      if (index !== -1) transactions[index] = { ...transactions[index], ...c };
     }
   } else {
-    const { data, error } = await supabase.from('transactions').insert({
-      user_id: user.id, type, value: val, category: selectedCategory,
-      description: desc || selectedCategory, date, recurring
-    }).select().single();
-    if (!error && data) transactions.push({ id: data.id, date: data.date, type: data.type, category: data.category, description: data.description, value: data.value, recurring: data.recurring });
+    const payloadBase = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring };
+
+    if (isOnline()) {
+      try {
+        const user = await getCurrentUser();
+        const { data, error } = await supabase.from('transactions').insert({ ...payloadBase, user_id: user.id }).select().single();
+        if (error) throw error;
+        transactions.push({ id: data.id, date: data.date, type: data.type, category: data.category, description: data.description, value: data.value, recurring: data.recurring });
+      } catch (e) {
+        console.error('[handleModalSubmit] Falha ao inserir online, salvando para sincronizar depois:', e);
+        const tempId = generateTempId();
+        const user = await getCurrentUser();
+        queueInsert(tempId, { ...payloadBase, user_id: user ? user.id : null });
+        transactions.push({ id: tempId, ...payloadBase });
+      }
+    } else {
+      const tempId = generateTempId();
+      const user = await getCurrentUser();
+      queueInsert(tempId, { ...payloadBase, user_id: user ? user.id : null });
+      transactions.push({ id: tempId, ...payloadBase });
+    }
   }
 
+  cacheTransactionsLocally(transactions);
+  updateOfflineBanner();
   processAndRenderAll();
   closeModal();
 }
@@ -130,8 +170,23 @@ export async function handleModalSubmit() {
 export async function handleModalDelete() {
   if (activeEditId) {
     if (confirm('Tem certeza que deseja excluir este lançamento?')) {
-      await supabase.from('transactions').delete().eq('id', activeEditId);
+      if (isTempId(activeEditId)) {
+        queueDelete(activeEditId); // just drops the still-pending insert
+      } else if (isOnline()) {
+        try {
+          const { error } = await supabase.from('transactions').delete().eq('id', activeEditId);
+          if (error) throw error;
+        } catch (e) {
+          console.error('[handleModalDelete] Falha ao excluir online, salvando para sincronizar depois:', e);
+          queueDelete(activeEditId);
+        }
+      } else {
+        queueDelete(activeEditId);
+      }
+
       setTransactions(transactions.filter(t => t.id !== activeEditId));
+      cacheTransactionsLocally(transactions);
+      updateOfflineBanner();
       processAndRenderAll();
       closeModal();
     }
