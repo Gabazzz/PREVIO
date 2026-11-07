@@ -1,0 +1,153 @@
+/* ==========================================================================
+   Evolução 8 — Entrada por IA / Linguagem Natural
+   ========================================================================== */
+
+import { DOM } from './dom.js';
+import { supabase } from './supabase-client.js';
+import { getLocalDateStr } from './utils.js';
+import { openModal } from './transaction-modal.js';
+
+const aiSheet = {
+  overlay:      document.getElementById('modal-ai-entry'),
+  input:        document.getElementById('ai-natural-input'),
+  btnSubmit:    document.getElementById('btn-ai-submit'),
+  btnClose:     document.getElementById('btn-ai-sheet-close'),
+  btnManualExp: document.getElementById('btn-ai-manual-expense'),
+  btnManualInc: document.getElementById('btn-ai-manual-income'),
+  loading:      document.getElementById('ai-loading-state'),
+  error:        document.getElementById('ai-error-state'),
+};
+
+export function openAISheet() {
+  aiSheet.input.value = '';
+  aiSheet.error.style.display = 'none';
+  aiSheet.loading.style.display = 'none';
+  aiSheet.btnSubmit.disabled = false;
+  aiSheet.overlay.classList.add('active');
+  setTimeout(() => aiSheet.input.focus(), 300);
+}
+
+export function closeAISheet() {
+  aiSheet.overlay.classList.remove('active');
+}
+
+aiSheet.btnClose.addEventListener('click', closeAISheet);
+aiSheet.overlay.addEventListener('click', (e) => {
+  if (e.target === aiSheet.overlay) closeAISheet();
+});
+
+aiSheet.btnManualExp.addEventListener('click', () => {
+  closeAISheet();
+  openModal('saída');
+});
+
+aiSheet.btnManualInc.addEventListener('click', () => {
+  closeAISheet();
+  openModal('entrada');
+});
+
+aiSheet.input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleAISubmit();
+  }
+});
+
+aiSheet.btnSubmit.addEventListener('click', handleAISubmit);
+
+async function callClaudeAPI(userText) {
+  const today = getLocalDateStr();
+  const yesterday = getLocalDateStr(new Date(Date.now() - 86400000));
+
+  const systemPrompt = `Você é um parser financeiro. O usuário vai descrever uma transação financeira em linguagem natural, em português brasileiro informal.
+
+Retorne SOMENTE um objeto JSON válido, sem texto adicional, sem markdown, sem comentários.
+
+Campos obrigatórios:
+- type: "saída" ou "entrada"
+- value: número decimal (ex: 42.50)
+- category: exatamente uma das opções abaixo:
+  - Para saída: "Alimentação", "Transporte", "Moradia", "Saúde", "Lazer", "Outros"
+  - Para entrada: "Salário", "Freela", "Rendimentos", "Outros"
+- description: texto curto descritivo (máx 40 chars)
+- date: data no formato YYYY-MM-DD
+- recurring: true ou false
+
+Regras de inferência:
+- Sem menção de data ou "hoje" → ${today}
+- "ontem" → ${yesterday}
+- aluguel, internet, streaming, academia → recurring: true
+- ifood, uber, mercado, restaurante, farmácia, compras → recurring: false
+- "freela", "trabalho extra", "bico" → entrada, Freela
+- "salário", "pagamento", "recebi", "caiu" → entrada
+- "gastei", "paguei", "comprei", "fui" → saída
+- Se valor não identificado → value: 0
+- Se não for transação financeira → {"error": "não interpretável"}`;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada. Faça login novamente.');
+
+  const response = await fetch('/api/claude', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userText }]
+    })
+  });
+
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  const raw = data.content.map(b => b.text || '').join('').trim();
+  const clean = raw.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+async function handleAISubmit() {
+  const text = aiSheet.input.value.trim();
+  if (!text) return;
+
+  aiSheet.loading.style.display = 'flex';
+  aiSheet.error.style.display = 'none';
+  aiSheet.btnSubmit.disabled = true;
+
+  try {
+    const result = await callClaudeAPI(text);
+    aiSheet.loading.style.display = 'none';
+
+    if (result.error || !result.type || result.value === undefined) {
+      aiSheet.error.style.display = 'block';
+      aiSheet.btnSubmit.disabled = false;
+      return;
+    }
+
+    closeAISheet();
+
+    setTimeout(() => {
+      openModal(result.type);
+
+      DOM.modalInputValue.value = result.value;
+      DOM.modalInputDesc.value  = result.description || '';
+      DOM.modalInputDate.value  = result.date || getLocalDateStr();
+      DOM.modalInputRecurring.checked = !!result.recurring;
+
+      if (result.category) {
+        const chips = DOM.categoryChipsList.querySelectorAll('.chip');
+        chips.forEach(chip => {
+          if (chip.textContent.trim() === result.category) chip.click();
+        });
+      }
+    }, 280);
+
+  } catch (err) {
+    console.error('[AI Entry] Erro:', err);
+    aiSheet.loading.style.display = 'none';
+    aiSheet.error.style.display = 'block';
+    aiSheet.btnSubmit.disabled = false;
+  }
+}
