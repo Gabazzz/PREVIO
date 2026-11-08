@@ -117,6 +117,13 @@ Campos obrigatórios:
 - date: data no formato YYYY-MM-DD
 - recurring: true ou false
 
+Regras pra extrair o valor (campo "value"):
+- "9 e 58", "9 reais e 58", "9 e 58 centavos" → 9.58 (reais e centavos, NUNCA concatenar como 958)
+- "35 reais", "35" → 35.00
+- "35,50" ou "35.50" → 35.50
+- "trinta e cinco reais e vinte" → 35.20
+- Só concatene dígitos em sequência quando a pessoa claramente falar um valor grande por extenso sem separador de centavos (ex.: "mil e duzentos" → 1200.00)
+
 Regras de inferência:
 - Sem menção de data ou "hoje" → ${today}
 - "ontem" → ${yesterday}
