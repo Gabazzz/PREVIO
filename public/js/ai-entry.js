@@ -6,6 +6,7 @@ import { DOM } from './dom.js';
 import { supabase } from './supabase-client.js';
 import { getLocalDateStr } from './utils.js';
 import { openModal } from './transaction-modal.js';
+import { voiceInputSupported, startVoiceInput, stopVoiceInput } from './voice-input.js';
 
 const aiSheet = {
   overlay:      document.getElementById('modal-ai-entry'),
@@ -16,6 +17,9 @@ const aiSheet = {
   btnManualInc: document.getElementById('btn-ai-manual-income'),
   loading:      document.getElementById('ai-loading-state'),
   error:        document.getElementById('ai-error-state'),
+  btnVoice:         document.getElementById('btn-ai-voice'),
+  voiceStatus:      document.getElementById('ai-voice-status'),
+  voiceStatusText:  document.getElementById('ai-voice-status-text'),
 };
 
 export function openAISheet() {
@@ -23,6 +27,11 @@ export function openAISheet() {
   aiSheet.error.style.display = 'none';
   aiSheet.loading.style.display = 'none';
   aiSheet.btnSubmit.disabled = false;
+  stopVoiceInput();
+  aiSheet.btnVoice.classList.remove('listening');
+  aiSheet.voiceStatus.style.display = 'none';
+  aiSheet.voiceStatus.classList.remove('voice-error');
+  if (voiceInputSupported()) aiSheet.btnVoice.style.display = 'flex';
   aiSheet.overlay.classList.add('active');
   setTimeout(() => aiSheet.input.focus(), 300);
 }
@@ -54,6 +63,41 @@ aiSheet.input.addEventListener('keydown', (e) => {
 });
 
 aiSheet.btnSubmit.addEventListener('click', handleAISubmit);
+
+aiSheet.btnVoice.addEventListener('click', () => {
+  if (aiSheet.btnVoice.classList.contains('listening')) {
+    stopVoiceInput();
+    return;
+  }
+
+  aiSheet.error.style.display = 'none';
+  aiSheet.voiceStatus.classList.remove('voice-error');
+  aiSheet.voiceStatus.style.display = 'flex';
+  aiSheet.voiceStatusText.textContent = 'Ouvindo...';
+  aiSheet.btnVoice.classList.add('listening');
+
+  startVoiceInput({
+    onResult: (transcript) => {
+      const current = aiSheet.input.value.trim();
+      aiSheet.input.value = current ? `${current} ${transcript}` : transcript;
+      aiSheet.input.focus();
+    },
+    onError: (message) => {
+      aiSheet.voiceStatusText.textContent = message;
+      aiSheet.voiceStatus.classList.add('voice-error');
+      setTimeout(() => {
+        aiSheet.voiceStatus.style.display = 'none';
+        aiSheet.voiceStatus.classList.remove('voice-error');
+      }, 2500);
+    },
+    onEnd: () => {
+      aiSheet.btnVoice.classList.remove('listening');
+      if (!aiSheet.voiceStatus.classList.contains('voice-error')) {
+        aiSheet.voiceStatus.style.display = 'none';
+      }
+    }
+  });
+});
 
 async function callClaudeAPI(userText) {
   const today = getLocalDateStr();
