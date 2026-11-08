@@ -65,7 +65,8 @@ export async function loadData() {
     category: t.category,
     description: t.description,
     value: t.value,
-    recurring: t.recurring
+    recurring: t.recurring,
+    pontual: t.pontual
   })));
 
   // Re-surface any lançamentos created while offline that haven't synced yet —
@@ -262,7 +263,7 @@ export async function submitOnboardingData() {
       const { data, error } = await supabase.from('transactions').insert(toInsert).select();
       if (error) throw error;
       if (data) {
-        setTransactions(data.map(t => ({ id: t.id, date: t.date, type: t.type, category: t.category, description: t.description, value: t.value, recurring: t.recurring })));
+        setTransactions(data.map(t => ({ id: t.id, date: t.date, type: t.type, category: t.category, description: t.description, value: t.value, recurring: t.recurring, pontual: t.pontual })));
         inserted = true;
       }
     } catch (e) {

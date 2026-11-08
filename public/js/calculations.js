@@ -107,10 +107,13 @@ export function runCoreCalculations() {
   // 3. Get Filter range for burnRate & projections
   const { from, to } = getFilterDateRange();
 
-  // Calculate variable burn rate in the selected range
+  // Calculate variable burn rate in the selected range. Gastos marcados como
+  // "pontuais" (parcela, conta grande, compra avulsa) entram no saldo
+  // normalmente, mas ficam fora daqui — não representam o ritmo de consumo
+  // do dia a dia, e espalhados numa média diária distorcem a projeção.
   let variableSpentInPeriod = 0;
   transactions.forEach(tx => {
-    if (tx.type === 'saída' && !tx.recurring) {
+    if (tx.type === 'saída' && !tx.recurring && !tx.pontual) {
       const txDate = new Date(tx.date + 'T00:00:00');
       if (txDate >= from && txDate <= to) {
         variableSpentInPeriod += tx.value;
@@ -136,7 +139,7 @@ export function runCoreCalculations() {
 
   let expensesIn3Days = 0;
   transactions.forEach(tx => {
-    if (tx.type === 'saída' && !tx.recurring) {
+    if (tx.type === 'saída' && !tx.recurring && !tx.pontual) {
       const txDate = new Date(tx.date + 'T00:00:00');
       if (txDate >= threeDaysAgo && txDate <= today) {
         expensesIn3Days += tx.value;

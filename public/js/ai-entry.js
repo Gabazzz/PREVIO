@@ -116,6 +116,7 @@ Campos obrigatórios:
 - description: texto curto descritivo (máx 40 chars)
 - date: data no formato YYYY-MM-DD
 - recurring: true ou false
+- pontual: true ou false (só pra saída — ver regras abaixo)
 
 Regras pra extrair o valor (campo "value"):
 - "9 e 58", "9 reais e 58", "9 e 58 centavos" → 9.58 (reais e centavos, NUNCA concatenar como 958)
@@ -133,6 +134,8 @@ Regras de inferência:
 - "freela", "trabalho extra", "bico" → entrada, Freela
 - "salário", "pagamento", "recebi", "caiu" → entrada
 - "gastei", "paguei", "comprei", "fui" → saída
+- pontual: true quando for parcela ("parcela do notebook", "2/12"), conta grande avulsa (energia, água, gás, celular quebrado, manutenção) ou compra única de valor alto que não é do dia a dia — esses gastos entram no saldo mas não devem contar na taxa de queima diária
+- pontual: false (padrão) pra gasto comum do dia a dia (comida, transporte, lazer, compras pequenas) e sempre que recurring for true
 - Se valor não identificado → value: 0
 - Se não for transação financeira → {"error": "não interpretável"}`;
 
@@ -187,6 +190,7 @@ async function handleAISubmit() {
       DOM.modalInputDesc.value  = result.description || '';
       DOM.modalInputDate.value  = result.date || getLocalDateStr();
       DOM.modalInputRecurring.checked = !!result.recurring;
+      DOM.modalInputPontual.checked = !!result.pontual;
 
       if (result.category) {
         const chips = DOM.categoryChipsList.querySelectorAll('.chip');

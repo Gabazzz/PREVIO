@@ -1371,6 +1371,11 @@ input:checked + .slider:before {
   text-transform: uppercase;
 }
 
+.t-pontual-badge {
+  color: #d9b45f;
+  border-color: rgba(217, 180, 95, 0.35);
+}
+
 .t-value {
   font-family: var(--font-mono);
   font-size: 0.95rem;

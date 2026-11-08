@@ -81,6 +81,8 @@ export const DOM = {
   modalInputDate: document.getElementById('modal-input-date'),
   modalInputRecurring: document.getElementById('modal-input-recurring'),
   categoryChipsList: document.getElementById('category-chips-list'),
+  modalPontualWrapper: document.getElementById('modal-pontual-wrapper'),
+  modalInputPontual: document.getElementById('modal-input-pontual'),
   modalPartusWrapper: document.getElementById('modal-partus-wrapper'),
   modalInputPartus: document.getElementById('modal-input-partus'),
 

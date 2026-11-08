@@ -265,7 +265,7 @@ export function renderDashboardData() {
       transactions.forEach(t => {
         if (t.type === 'saída') {
           const d = new Date(t.date + 'T00:00:00');
-          if (d >= thirtyAgo && !t.recurring) {
+          if (d >= thirtyAgo && !t.recurring && !t.pontual) {
             catTotals[t.category] = (catTotals[t.category] || 0) + t.value;
           }
         }
@@ -660,7 +660,7 @@ export function renderLaunchesList() {
 
       const category = document.createElement('div');
       category.className = 't-category';
-      category.innerHTML = `${t.category} ${t.recurring ? '<span class="t-recurring-badge">Recorrente</span>' : ''}`;
+      category.innerHTML = `${t.category} ${t.recurring ? '<span class="t-recurring-badge">Recorrente</span>' : ''} ${t.pontual ? '<span class="t-recurring-badge t-pontual-badge">Pontual</span>' : ''}`;
 
       details.appendChild(title);
       details.appendChild(category);

@@ -26,6 +26,7 @@ export function openModal(type = 'saída', editId = null) {
   DOM.modalInputValue.value = '';
   DOM.modalInputDesc.value = '';
   DOM.modalInputRecurring.checked = false;
+  DOM.modalInputPontual.checked = false;
   DOM.modalInputPartus.checked = false;
 
   DOM.modalInputDate.value = getLocalDateStr();
@@ -39,6 +40,7 @@ export function openModal(type = 'saída', editId = null) {
       DOM.modalInputDesc.value = tx.description;
       DOM.modalInputDate.value = tx.date;
       DOM.modalInputRecurring.checked = tx.recurring || false;
+      DOM.modalInputPontual.checked = tx.pontual || false;
       selectedCategory = tx.category;
       highlightSelectedCategoryChip();
       DOM.btnModalDelete.style.display = 'block';
@@ -70,6 +72,10 @@ export function setModalType(type) {
     DOM.toggleOptExpense.classList.remove('active');
     DOM.toggleOptIncome.classList.add('active');
   }
+
+  // "Gasto pontual" só faz sentido pra saídas (a taxa de queima só olha
+  // saídas) — mas, diferente do Partus, pode ser ajustado também ao editar.
+  DOM.modalPontualWrapper.style.display = (type === 'saída') ? 'flex' : 'none';
 
   // A integração com o Partus só faz sentido pra saídas novas (despesas da
   // casa) — editar um lançamento já existente não reenvia, pra não duplicar
@@ -112,12 +118,13 @@ export async function handleModalSubmit() {
   const desc = DOM.modalInputDesc.value.trim();
   const date = DOM.modalInputDate.value;
   const recurring = DOM.modalInputRecurring.checked;
+  const pontual = type === 'saída' && DOM.modalInputPontual.checked;
 
   if (isNaN(val) || val <= 0) { alert('Por favor, insira um valor válido maior que zero.'); return; }
   if (!date) { alert('Por favor, insira uma data válida.'); return; }
 
   if (activeEditId) {
-    const changes = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring };
+    const changes = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring, pontual };
 
     // A tempId means this row only exists locally (created offline and not
     // synced yet) — there's nothing to UPDATE on the server, so the change
@@ -145,7 +152,7 @@ export async function handleModalSubmit() {
       if (index !== -1) transactions[index] = { ...transactions[index], ...c };
     }
   } else {
-    const payloadBase = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring };
+    const payloadBase = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring, pontual };
     const sendToPartus = type === 'saída' && DOM.modalInputPartus.checked;
 
     if (isOnline()) {
@@ -153,7 +160,7 @@ export async function handleModalSubmit() {
         const user = await getCurrentUser();
         const { data, error } = await supabase.from('transactions').insert({ ...payloadBase, user_id: user.id }).select().single();
         if (error) throw error;
-        transactions.push({ id: data.id, date: data.date, type: data.type, category: data.category, description: data.description, value: data.value, recurring: data.recurring });
+        transactions.push({ id: data.id, date: data.date, type: data.type, category: data.category, description: data.description, value: data.value, recurring: data.recurring, pontual: data.pontual });
       } catch (e) {
         console.error('[handleModalSubmit] Falha ao inserir online, salvando para sincronizar depois:', e);
         const tempId = generateTempId();
