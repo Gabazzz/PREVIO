@@ -63,9 +63,20 @@ export function getFilterDateRange() {
 export function runCoreCalculations() {
   transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // 1. Calculate Absolute Balance (Always all transactions)
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // 1. Calculate Absolute Balance — só transações já realizadas (data <= hoje).
+  // Uma recorrência futura (ex.: aluguel que só vence dia 15) já existe como
+  // linha na tabela antes do dia chegar, mas o dinheiro ainda não saiu da
+  // conta. Somar ela aqui descontava o aluguel do saldo ANTES da hora — e
+  // como o "Saldo Livre" logo abaixo desconta esse mesmo valor de novo (como
+  // gasto fixo ainda por vir), o aluguel acabava subtraído duas vezes,
+  // fazendo a autonomia parecer bem menor do que o saldo real sugere.
   let balance = 0;
   transactions.forEach(tx => {
+    const txDate = new Date(tx.date + 'T00:00:00');
+    if (txDate > today) return;
     if (tx.type === 'entrada') {
       balance += tx.value;
     } else if (tx.type === 'saída') {
@@ -75,8 +86,6 @@ export function runCoreCalculations() {
   stats.currentBalance = balance;
 
   // 2. Committed fixed expenses for current month
-  const today = new Date();
-  today.setHours(0,0,0,0);
   const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
   let committedFixed = 0;
