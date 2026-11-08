@@ -108,6 +108,42 @@ export async function saveData() {
 //
 // Offline-aware: when there's no connection, the new occurrences are created
 // locally with temporary ids and queued to sync once the connection returns.
+// Dia útil = segunda a sexta (não considera feriados, só fins de semana).
+function isBusinessDay(date) {
+  const dow = date.getDay();
+  return dow !== 0 && dow !== 6;
+}
+
+// Em qual posição (1º, 2º, 3º dia útil do mês...) a data cai. Se a própria
+// data não for dia útil (raro pra um salário, mas possível), conta os dias
+// úteis estritamente anteriores a ela.
+function businessDayIndexOf(date) {
+  let count = 0;
+  for (let d = 1; d <= date.getDate(); d++) {
+    const cur = new Date(date.getFullYear(), date.getMonth(), d);
+    if (isBusinessDay(cur)) count++;
+  }
+  return Math.max(count, 1);
+}
+
+// Dia do mês correspondente ao N-ésimo dia útil. Se o mês tiver menos dias
+// úteis que N (não deveria acontecer na prática, N raramente passa de ~23),
+// cai no último dia útil do mês em vez de estourar pro mês seguinte.
+function nthBusinessDayOfMonth(year, month, n) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  let fallback = lastDay;
+  for (let d = 1; d <= lastDay; d++) {
+    const cur = new Date(year, month, d);
+    if (isBusinessDay(cur)) {
+      count++;
+      fallback = d;
+      if (count === n) return d;
+    }
+  }
+  return fallback;
+}
+
 async function generateDueRecurringOccurrences() {
   const recurringTxs = transactions.filter(t => t.recurring);
   if (recurringTxs.length === 0) return;
@@ -136,6 +172,12 @@ async function generateDueRecurringOccurrences() {
     const templateDate = new Date(template.date + 'T00:00:00');
     const dueDay = templateDate.getDate();
 
+    // Entradas recorrentes (salário) seguem o Nº dia útil do mês, não o dia
+    // fixo — "todo dia 5 útil" pode cair no dia 5, 6 ou 7 dependendo do mês,
+    // enquanto despesas fixas (aluguel, assinaturas) seguem mesmo o dia fixo.
+    const useBusinessDay = template.type === 'entrada';
+    const businessDayN = useBusinessDay ? businessDayIndexOf(templateDate) : null;
+
     const existingMonths = new Set(series.map(t => t.date.slice(0, 7)));
 
     let cursorYear = templateDate.getFullYear();
@@ -149,7 +191,9 @@ async function generateDueRecurringOccurrences() {
       if (cursorYear > todayYear || (cursorYear === todayYear && cursorMonth > todayMonth)) break;
 
       const lastDayOfCursorMonth = new Date(cursorYear, cursorMonth + 1, 0).getDate();
-      const occurrenceDay = Math.min(dueDay, lastDayOfCursorMonth);
+      const occurrenceDay = useBusinessDay
+        ? nthBusinessDayOfMonth(cursorYear, cursorMonth, businessDayN)
+        : Math.min(dueDay, lastDayOfCursorMonth);
 
       const isCurrentMonth = cursorYear === todayYear && cursorMonth === todayMonth;
       if (isCurrentMonth && todayDay < occurrenceDay) break; // due date hasn't arrived yet
