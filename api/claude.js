@@ -11,7 +11,7 @@
 const SUPABASE_URL = 'https://grjovgjhnmglvtclpwvs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyam92Z2pobm1nbHZ0Y2xwd3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NTgzMTIsImV4cCI6MjA5NTMzNDMxMn0.ngTL5_rJ0NnCyRBuwKcSylnQBp6kNDFo5-73o5dPat4';
 
-const ALLOWED_MODELS = new Set(['claude-sonnet-4-5']);
+const ALLOWED_MODELS = new Set(['claude-haiku-5-5']);
 const MAX_TOKENS_CAP = 300;
 const MAX_INPUT_CHARS = 1000; // natural-language transaction entries are always short
 
@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
   // 2. Build the Anthropic request ourselves from an allow-listed shape — never
   //    forward the caller's body verbatim.
   const body = req.body || {};
-  const model = ALLOWED_MODELS.has(body.model) ? body.model : 'claude-sonnet-4-5';
+  const model = ALLOWED_MODELS.has(body.model) ? body.model : 'claude-haiku-5-5';
   const maxTokens = Math.min(MAX_TOKENS_CAP, Number(body.max_tokens) || MAX_TOKENS_CAP);
   const system = typeof body.system === 'string' ? body.system : '';
   const userMessage = Array.isArray(body.messages) && body.messages[0] && typeof body.messages[0].content === 'string'

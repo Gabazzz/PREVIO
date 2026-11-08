@@ -138,7 +138,7 @@ Regras de inferência:
       'Authorization': `Bearer ${session.access_token}`
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-haiku-5-5',
       max_tokens: 300,
       system: systemPrompt,
       messages: [{ role: 'user', content: userText }]
