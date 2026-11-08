@@ -11,6 +11,13 @@ import { AUTONOMY_HISTORY_KEY } from './constants.js';
 import { getLocalDateStr } from './utils.js';
 
 const MAX_ENTRIES = 90;
+// Com pouquíssimo gasto variável registrado no período (ex.: início do mês,
+// ou só 1-2 lançamentos de teste), a divisão saldo livre ÷ gasto médio
+// diário pode disparar pra centenas de milhares de "dias restantes" — um
+// número matematicamente correto, mas inútil pro gráfico (estica o eixo e
+// esconde a variação real dos outros dias). Acima desse teto, o valor é
+// tratado como "autonomia confortavelmente alta" e registrado nesse teto.
+const MAX_PLOTTED_DAYS = 3650; // 10 anos
 
 export function logAutonomySnapshot(daysRemaining) {
   // "∞" (no active burn) isn't a meaningful point on a days-remaining chart —
@@ -19,7 +26,7 @@ export function logAutonomySnapshot(daysRemaining) {
 
   let history = getAutonomyHistory();
   const todayStr = getLocalDateStr();
-  const value = Math.floor(daysRemaining);
+  const value = Math.min(Math.floor(daysRemaining), MAX_PLOTTED_DAYS);
 
   const existingIdx = history.findIndex(h => h.date === todayStr);
   if (existingIdx !== -1) {

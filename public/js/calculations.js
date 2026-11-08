@@ -109,7 +109,15 @@ export function runCoreCalculations() {
     }
   });
 
-  const diffTime = Math.abs(to.getTime() - from.getTime());
+  // Quando o período selecionado ainda não terminou (ex.: "Este mês" visto
+  // no dia 2), dividir pelo total de dias do período inteiro (ex.: 30)
+  // diluía o gasto médio diário pra quase zero logo no começo do mês — e
+  // como "dias restantes" é saldo livre ÷ gasto médio diário, isso inflava
+  // a autonomia pra valores absurdos (centenas de milhares de dias). Por
+  // isso o divisor usa só os dias que já de fato passaram dentro do
+  // período, nunca o período inteiro quando ele inclui dias futuros.
+  const diffEnd = to > today ? today : to;
+  const diffTime = Math.abs(diffEnd.getTime() - from.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   stats.burnRate = variableSpentInPeriod / diffDays;
 
