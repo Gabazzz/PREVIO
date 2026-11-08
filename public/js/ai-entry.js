@@ -123,6 +123,7 @@ Regras pra extrair o valor (campo "value"):
 - "35,50" ou "35.50" → 35.50
 - "trinta e cinco reais e vinte" → 35.20
 - Só concatene dígitos em sequência quando a pessoa claramente falar um valor grande por extenso sem separador de centavos (ex.: "mil e duzentos" → 1200.00)
+- O reconhecimento de voz às vezes transcreve "9 e 58" como se fosse hora, no formato "9:58" ou "09:58". Esta é uma transação financeira, então isso NUNCA é um horário — é sempre reais e centavos: "9:58" → 9.58, "14:30" → 14.30. Nunca descarte esse número nem interprete como horário do dia.
 
 Regras de inferência:
 - Sem menção de data ou "hoje" → ${today}
