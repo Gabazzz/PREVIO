@@ -937,6 +937,36 @@ export function renderAnalysisData() {
     DOM.analysisMonthComparison.className = 'metric-change neutral';
   }
 
+  // Leftover carried into this month — the balance already carries over on
+  // its own (it's never reset monthly), so this is purely informational:
+  // how much of what's in the account today is "old" money from before this
+  // month started, versus what came in/out since. Only shown when there's
+  // actual history before this month (otherwise it's just the onboarding
+  // starting balance, which is already shown elsewhere).
+  const firstDayOfThisMonth = new Date(currentYear, currentMonth, 1);
+  const hasPriorMonthHistory = transactions.some(t => new Date(t.date + 'T00:00:00') < firstDayOfThisMonth);
+
+  if (hasPriorMonthHistory && DOM.analysisMonthCarryoverRow) {
+    const lastDayOfLastMonth = new Date(currentYear, currentMonth, 0);
+    lastDayOfLastMonth.setHours(0, 0, 0, 0);
+
+    let carryover = 0;
+    transactions.forEach(t => {
+      const tDate = new Date(t.date + 'T00:00:00');
+      if (tDate <= lastDayOfLastMonth) {
+        carryover += t.type === 'entrada' ? t.value : -t.value;
+      }
+    });
+
+    const monthName = today.toLocaleDateString('pt-BR', { month: 'long' });
+    DOM.analysisMonthCarryoverRow.style.display = 'flex';
+    DOM.analysisMonthCarryover.innerText = formatBRL(carryover);
+    DOM.analysisMonthCarryover.className = carryover >= 0 ? 'metric-change positive' : 'metric-change negative';
+    DOM.analysisMonthCarryoverLabel.innerText = `Sobra trazida pra ${monthName}:`;
+  } else if (DOM.analysisMonthCarryoverRow) {
+    DOM.analysisMonthCarryoverRow.style.display = 'none';
+  }
+
   // Category Breakdown (last 30 days) - SPLIT Fixed vs Variable
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 29);

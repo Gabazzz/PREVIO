@@ -96,6 +96,9 @@ export const DOM = {
   // Analysis
   analysisTotalSpent: document.getElementById('analysis-total-spent'),
   analysisMonthComparison: document.getElementById('analysis-month-comparison'),
+  analysisMonthCarryoverRow: document.getElementById('analysis-month-carryover-row'),
+  analysisMonthCarryoverLabel: document.getElementById('analysis-month-carryover-label'),
+  analysisMonthCarryover: document.getElementById('analysis-month-carryover'),
   analysisCategoryBarsVariable: document.getElementById('analysis-category-bars-variable'),
   analysisCategoryBarsFixed: document.getElementById('analysis-category-bars-fixed'),
   analysisHabitCard: document.getElementById('analysis-habit-card'),
