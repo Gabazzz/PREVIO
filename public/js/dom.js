@@ -81,6 +81,8 @@ export const DOM = {
   modalInputDate: document.getElementById('modal-input-date'),
   modalInputRecurring: document.getElementById('modal-input-recurring'),
   categoryChipsList: document.getElementById('category-chips-list'),
+  modalPartusWrapper: document.getElementById('modal-partus-wrapper'),
+  modalInputPartus: document.getElementById('modal-input-partus'),
 
   // Simulator
   simDaysNumber: document.getElementById('sim-days-number'),

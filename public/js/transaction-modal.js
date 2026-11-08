@@ -17,6 +17,7 @@ import {
   queueInsert, queueUpdate, queueDelete, cacheTransactionsLocally
 } from './offline.js';
 import { updateOfflineBanner } from './offline-ui.js';
+import { enviarParaPartus } from './partus-bridge.js';
 
 let selectedCategory = '';
 
@@ -25,6 +26,7 @@ export function openModal(type = 'saída', editId = null) {
   DOM.modalInputValue.value = '';
   DOM.modalInputDesc.value = '';
   DOM.modalInputRecurring.checked = false;
+  DOM.modalInputPartus.checked = false;
 
   DOM.modalInputDate.value = getLocalDateStr();
 
@@ -68,6 +70,11 @@ export function setModalType(type) {
     DOM.toggleOptExpense.classList.remove('active');
     DOM.toggleOptIncome.classList.add('active');
   }
+
+  // A integração com o Partus só faz sentido pra saídas novas (despesas da
+  // casa) — editar um lançamento já existente não reenvia, pra não duplicar
+  // a despesa de lá toda vez que o valor for ajustado aqui.
+  DOM.modalPartusWrapper.style.display = (type === 'saída' && !activeEditId) ? 'flex' : 'none';
 
   DOM.categoryChipsList.innerHTML = '';
   const list = getCategories(type);
@@ -139,6 +146,7 @@ export async function handleModalSubmit() {
     }
   } else {
     const payloadBase = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring };
+    const sendToPartus = type === 'saída' && DOM.modalInputPartus.checked;
 
     if (isOnline()) {
       try {
@@ -158,6 +166,15 @@ export async function handleModalSubmit() {
       const user = await getCurrentUser();
       queueInsert(tempId, { ...payloadBase, user_id: user ? user.id : null });
       transactions.push({ id: tempId, ...payloadBase });
+    }
+
+    // Cópia pro Partus — melhor esforço, não bloqueia o lançamento no Previo
+    // (que já foi salvo acima, ou enfileirado pra sincronizar).
+    if (sendToPartus) {
+      enviarParaPartus(payloadBase).catch((e) => {
+        console.error('[handleModalSubmit] Falha ao enviar para o Partus:', e);
+        alert('Lançamento salvo no Previo, mas não foi possível enviar ao Partus: ' + e.message);
+      });
     }
   }
 
