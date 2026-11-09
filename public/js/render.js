@@ -191,12 +191,14 @@ export function renderDashboardData() {
     animateNumber(DOM.metricVaBalance, stats.vaBalance, formatBRL);
   }
 
-  // Color code free balance if committed ratio is > 30%
+  // Avisa no "Saldo total" (agora o sublabel) quando boa parte dele já está
+  // comprometida com contas fixas futuras — é esse valor que varia, "Livre"
+  // já é o número líquido em destaque.
   const commitRatio = stats.currentBalance > 0 ? stats.committedFixed / stats.currentBalance : 0;
   if (commitRatio > 0.3) {
-    DOM.metricFreeBalance.className = 'metric-sub-value warning';
+    DOM.metricBalance.className = 'metric-sub-value warning';
   } else {
-    DOM.metricFreeBalance.className = 'metric-sub-value safe';
+    DOM.metricBalance.className = 'metric-sub-value safe';
   }
 
   // Variable burn rate

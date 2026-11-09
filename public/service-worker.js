@@ -1,4 +1,4 @@
-const CACHE_NAME = 'previo-cache-v9';
+const CACHE_NAME = 'previo-cache-v10';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
