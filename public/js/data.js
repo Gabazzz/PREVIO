@@ -66,7 +66,8 @@ export async function loadData() {
     description: t.description,
     value: t.value,
     recurring: t.recurring,
-    pontual: t.pontual
+    pontual: t.pontual,
+    va: t.va
   })));
 
   // Re-surface any lançamentos created while offline that haven't synced yet —
@@ -209,7 +210,9 @@ async function generateDueRecurringOccurrences() {
         category: template.category,
         description: template.description,
         value: template.value,
-        recurring: true
+        recurring: true,
+        pontual: template.pontual || false,
+        va: template.va || false
       });
       existingMonths.add(monthKey);
     }
@@ -224,7 +227,8 @@ async function generateDueRecurringOccurrences() {
       if (data) {
         data.forEach(t => transactions.push({
           id: t.id, date: t.date, type: t.type, category: t.category,
-          description: t.description, value: t.value, recurring: t.recurring
+          description: t.description, value: t.value, recurring: t.recurring,
+          pontual: t.pontual, va: t.va
         }));
       }
       return;
@@ -263,7 +267,7 @@ export async function submitOnboardingData() {
       const { data, error } = await supabase.from('transactions').insert(toInsert).select();
       if (error) throw error;
       if (data) {
-        setTransactions(data.map(t => ({ id: t.id, date: t.date, type: t.type, category: t.category, description: t.description, value: t.value, recurring: t.recurring, pontual: t.pontual })));
+        setTransactions(data.map(t => ({ id: t.id, date: t.date, type: t.type, category: t.category, description: t.description, value: t.value, recurring: t.recurring, pontual: t.pontual, va: t.va })));
         inserted = true;
       }
     } catch (e) {

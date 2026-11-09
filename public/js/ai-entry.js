@@ -117,6 +117,7 @@ Campos obrigatórios:
 - date: data no formato YYYY-MM-DD
 - recurring: true ou false
 - pontual: true ou false (só pra saída — ver regras abaixo)
+- va: true ou false (carteira de vale-alimentação, ex. Caju — ver regras abaixo)
 
 Regras pra extrair o valor (campo "value"):
 - "9 e 58", "9 reais e 58", "9 e 58 centavos" → 9.58 (reais e centavos, NUNCA concatenar como 958)
@@ -136,6 +137,8 @@ Regras de inferência:
 - "gastei", "paguei", "comprei", "fui" → saída
 - pontual: true quando for parcela ("parcela do notebook", "2/12"), conta grande avulsa (energia, água, gás, celular quebrado, manutenção) ou compra única de valor alto que não é do dia a dia — esses gastos entram no saldo mas não devem contar na taxa de queima diária
 - pontual: false (padrão) pra gasto comum do dia a dia (comida, transporte, lazer, compras pequenas) e sempre que recurring for true
+- va: true quando a pessoa mencionar explicitamente VA, vale-alimentação, vale-refeição, Caju, Alelo, Sodexo, VR ou similar — tanto pro crédito mensal (entrada) quanto pro gasto no mercado pago com esse saldo (saída)
+- va: false (padrão) quando não houver menção nenhuma a vale-alimentação/benefício — não assuma va:true só porque a categoria é Alimentação ou o estabelecimento é um mercado
 - Se valor não identificado → value: 0
 - Se não for transação financeira → {"error": "não interpretável"}`;
 
@@ -191,6 +194,7 @@ async function handleAISubmit() {
       DOM.modalInputDate.value  = result.date || getLocalDateStr();
       DOM.modalInputRecurring.checked = !!result.recurring;
       DOM.modalInputPontual.checked = !!result.pontual;
+      DOM.modalInputVa.checked = !!result.va;
 
       if (result.category) {
         const chips = DOM.categoryChipsList.querySelectorAll('.chip');

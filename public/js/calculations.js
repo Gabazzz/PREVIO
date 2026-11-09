@@ -66,31 +66,37 @@ export function runCoreCalculations() {
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  // 1. Calculate Absolute Balance — só transações já realizadas (data <= hoje).
-  // Uma recorrência futura (ex.: aluguel que só vence dia 15) já existe como
-  // linha na tabela antes do dia chegar, mas o dinheiro ainda não saiu da
-  // conta. Somar ela aqui descontava o aluguel do saldo ANTES da hora — e
-  // como o "Saldo Livre" logo abaixo desconta esse mesmo valor de novo (como
-  // gasto fixo ainda por vir), o aluguel acabava subtraído duas vezes,
-  // fazendo a autonomia parecer bem menor do que o saldo real sugere.
+  // 1. Calculate Absolute Balance — só transações já realizadas (data <= hoje)
+  // e fora da carteira VA. Uma recorrência futura (ex.: aluguel que só vence
+  // dia 15) já existe como linha na tabela antes do dia chegar, mas o
+  // dinheiro ainda não saiu da conta. Somar ela aqui descontava o aluguel do
+  // saldo ANTES da hora — e como o "Saldo Livre" logo abaixo desconta esse
+  // mesmo valor de novo (como gasto fixo ainda por vir), o aluguel acabava
+  // subtraído duas vezes, fazendo a autonomia parecer bem menor do que o
+  // saldo real sugere. VA (vale-alimentação) é dinheiro que só serve pra
+  // mercado — não é fungível com o resto, então fica numa carteira à parte
+  // (stats.vaBalance) e nunca entra aqui.
   let balance = 0;
+  let vaBalance = 0;
   transactions.forEach(tx => {
     const txDate = new Date(tx.date + 'T00:00:00');
     if (txDate > today) return;
-    if (tx.type === 'entrada') {
-      balance += tx.value;
-    } else if (tx.type === 'saída') {
-      balance -= tx.value;
+    const delta = tx.type === 'entrada' ? tx.value : -tx.value;
+    if (tx.va) {
+      vaBalance += delta;
+    } else {
+      balance += delta;
     }
   });
   stats.currentBalance = balance;
+  stats.vaBalance = vaBalance;
 
   // 2. Committed fixed expenses for current month
   const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
   let committedFixed = 0;
   transactions.forEach(tx => {
-    if (tx.type === 'saída' && tx.recurring) {
+    if (tx.type === 'saída' && tx.recurring && !tx.va) {
       const txDate = new Date(tx.date + 'T00:00:00');
       const dayOfMonth = txDate.getDate();
       const nextOccurrence = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
@@ -113,7 +119,7 @@ export function runCoreCalculations() {
   // do dia a dia, e espalhados numa média diária distorcem a projeção.
   let variableSpentInPeriod = 0;
   transactions.forEach(tx => {
-    if (tx.type === 'saída' && !tx.recurring && !tx.pontual) {
+    if (tx.type === 'saída' && !tx.recurring && !tx.pontual && !tx.va) {
       const txDate = new Date(tx.date + 'T00:00:00');
       if (txDate >= from && txDate <= to) {
         variableSpentInPeriod += tx.value;
@@ -139,7 +145,7 @@ export function runCoreCalculations() {
 
   let expensesIn3Days = 0;
   transactions.forEach(tx => {
-    if (tx.type === 'saída' && !tx.recurring && !tx.pontual) {
+    if (tx.type === 'saída' && !tx.recurring && !tx.pontual && !tx.va) {
       const txDate = new Date(tx.date + 'T00:00:00');
       if (txDate >= threeDaysAgo && txDate <= today) {
         expensesIn3Days += tx.value;

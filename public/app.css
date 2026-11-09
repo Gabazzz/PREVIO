@@ -346,6 +346,13 @@ body {
 .hud-card.warning::before { background-color: var(--accent-warning); }
 .hud-card.critical::before { background-color: var(--accent-critical); }
 
+.va-wallet-card {
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+}
+.va-wallet-card::before { background-color: var(--accent-safe); }
+
 .hud-card.safe { box-shadow: 0 4px 20px rgba(0, 255, 168, 0.03); }
 .hud-card.warning { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.03); }
 .hud-card.critical { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.03); }
@@ -1374,6 +1381,11 @@ input:checked + .slider:before {
 .t-pontual-badge {
   color: #d9b45f;
   border-color: rgba(217, 180, 95, 0.35);
+}
+
+.t-va-badge {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.35);
 }
 
 .t-value {

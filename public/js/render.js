@@ -184,6 +184,13 @@ export function renderDashboardData() {
   animateNumber(DOM.metricBalance, stats.currentBalance, formatBRL);
   animateNumber(DOM.metricFreeBalance, stats.freeBalance, formatBRL);
 
+  // Carteira VA (Caju) — só aparece se a pessoa de fato usa a feature
+  const temVa = transactions.some(t => t.va);
+  DOM.vaWalletCard.style.display = temVa ? 'flex' : 'none';
+  if (temVa) {
+    animateNumber(DOM.metricVaBalance, stats.vaBalance, formatBRL);
+  }
+
   // Color code free balance if committed ratio is > 30%
   const commitRatio = stats.currentBalance > 0 ? stats.committedFixed / stats.currentBalance : 0;
   if (commitRatio > 0.3) {
@@ -265,7 +272,7 @@ export function renderDashboardData() {
       transactions.forEach(t => {
         if (t.type === 'saída') {
           const d = new Date(t.date + 'T00:00:00');
-          if (d >= thirtyAgo && !t.recurring && !t.pontual) {
+          if (d >= thirtyAgo && !t.recurring && !t.pontual && !t.va) {
             catTotals[t.category] = (catTotals[t.category] || 0) + t.value;
           }
         }
@@ -660,7 +667,7 @@ export function renderLaunchesList() {
 
       const category = document.createElement('div');
       category.className = 't-category';
-      category.innerHTML = `${t.category} ${t.recurring ? '<span class="t-recurring-badge">Recorrente</span>' : ''} ${t.pontual ? '<span class="t-recurring-badge t-pontual-badge">Pontual</span>' : ''}`;
+      category.innerHTML = `${t.category} ${t.recurring ? '<span class="t-recurring-badge">Recorrente</span>' : ''} ${t.pontual ? '<span class="t-recurring-badge t-pontual-badge">Pontual</span>' : ''} ${t.va ? '<span class="t-recurring-badge t-va-badge">VA</span>' : ''}`;
 
       details.appendChild(title);
       details.appendChild(category);

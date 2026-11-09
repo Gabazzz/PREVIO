@@ -55,6 +55,8 @@ export const DOM = {
   metricBurnTrend: document.getElementById('metric-burn-trend'),
   metricEnddate: document.getElementById('metric-enddate'),
   metricCollapseDays: document.getElementById('metric-collapse-days'),
+  vaWalletCard: document.getElementById('va-wallet-card'),
+  metricVaBalance: document.getElementById('metric-va-balance'),
 
   // Daily Ceiling elements
   dailyCeilingCard: document.getElementById('daily-ceiling-card'),
@@ -80,6 +82,7 @@ export const DOM = {
   modalInputDesc: document.getElementById('modal-input-desc'),
   modalInputDate: document.getElementById('modal-input-date'),
   modalInputRecurring: document.getElementById('modal-input-recurring'),
+  modalInputVa: document.getElementById('modal-input-va'),
   categoryChipsList: document.getElementById('category-chips-list'),
   modalPontualWrapper: document.getElementById('modal-pontual-wrapper'),
   modalInputPontual: document.getElementById('modal-input-pontual'),

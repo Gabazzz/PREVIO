@@ -26,6 +26,7 @@ export function openModal(type = 'saída', editId = null) {
   DOM.modalInputValue.value = '';
   DOM.modalInputDesc.value = '';
   DOM.modalInputRecurring.checked = false;
+  DOM.modalInputVa.checked = false;
   DOM.modalInputPontual.checked = false;
   DOM.modalInputPartus.checked = false;
 
@@ -40,6 +41,7 @@ export function openModal(type = 'saída', editId = null) {
       DOM.modalInputDesc.value = tx.description;
       DOM.modalInputDate.value = tx.date;
       DOM.modalInputRecurring.checked = tx.recurring || false;
+      DOM.modalInputVa.checked = tx.va || false;
       DOM.modalInputPontual.checked = tx.pontual || false;
       selectedCategory = tx.category;
       highlightSelectedCategoryChip();
@@ -119,12 +121,13 @@ export async function handleModalSubmit() {
   const date = DOM.modalInputDate.value;
   const recurring = DOM.modalInputRecurring.checked;
   const pontual = type === 'saída' && DOM.modalInputPontual.checked;
+  const va = DOM.modalInputVa.checked;
 
   if (isNaN(val) || val <= 0) { alert('Por favor, insira um valor válido maior que zero.'); return; }
   if (!date) { alert('Por favor, insira uma data válida.'); return; }
 
   if (activeEditId) {
-    const changes = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring, pontual };
+    const changes = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring, pontual, va };
 
     // A tempId means this row only exists locally (created offline and not
     // synced yet) — there's nothing to UPDATE on the server, so the change
@@ -152,7 +155,7 @@ export async function handleModalSubmit() {
       if (index !== -1) transactions[index] = { ...transactions[index], ...c };
     }
   } else {
-    const payloadBase = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring, pontual };
+    const payloadBase = { type, value: val, category: selectedCategory, description: desc || selectedCategory, date, recurring, pontual, va };
     const sendToPartus = type === 'saída' && DOM.modalInputPartus.checked;
 
     if (isOnline()) {
@@ -160,7 +163,7 @@ export async function handleModalSubmit() {
         const user = await getCurrentUser();
         const { data, error } = await supabase.from('transactions').insert({ ...payloadBase, user_id: user.id }).select().single();
         if (error) throw error;
-        transactions.push({ id: data.id, date: data.date, type: data.type, category: data.category, description: data.description, value: data.value, recurring: data.recurring, pontual: data.pontual });
+        transactions.push({ id: data.id, date: data.date, type: data.type, category: data.category, description: data.description, value: data.value, recurring: data.recurring, pontual: data.pontual, va: data.va });
       } catch (e) {
         console.error('[handleModalSubmit] Falha ao inserir online, salvando para sincronizar depois:', e);
         const tempId = generateTempId();

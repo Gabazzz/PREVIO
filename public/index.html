@@ -307,6 +307,18 @@
           </div>
         </div>
 
+        <!-- Carteira VA (Caju) — separada do saldo/autonomia principal -->
+        <div class="hud-card va-wallet-card" id="va-wallet-card" style="display: none;">
+          <div class="metric-label">
+            <span class="metric-icon-badge safe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v12H3z"/><path d="M3 7l9-4 9 4"/><circle cx="12" cy="13" r="2"/></svg></span>
+            Saldo VA (Caju)
+          </div>
+          <div id="metric-va-balance" class="metric-value">R$ 0,00</div>
+          <div class="metric-sublabel" style="border:none; padding:0; margin-top:2px; font-size:0.6rem; color:var(--text-muted)">
+            vale-alimentação, só mercado — fora do saldo e da queima principal
+          </div>
+        </div>
+
         <!-- Dynamic Daily Ceiling Card -->
         <div class="hud-card daily-ceiling-card" id="daily-ceiling-card">
           <div class="daily-ceiling-header">
@@ -753,6 +765,18 @@
           </div>
           <label class="switch">
             <input type="checkbox" id="modal-input-recurring">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Toggle Carteira VA (Caju) — vale tanto pro crédito (entrada) quanto pro gasto (saída) -->
+        <div class="toggle-switch-wrapper">
+          <div class="toggle-switch-label">
+            <span class="toggle-switch-title">Carteira VA (Caju)?</span>
+            <span class="toggle-switch-desc">Vale-alimentação à parte — não entra no saldo nem na taxa de queima principal</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="modal-input-va">
             <span class="slider"></span>
           </label>
         </div>
